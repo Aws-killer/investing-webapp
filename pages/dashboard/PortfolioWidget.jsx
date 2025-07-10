@@ -1,15 +1,12 @@
 // pages/dashboard/PortfolioWidget.jsx
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect, memo, useCallback, useRef } from "react";
+import { motion, animate, useAnimate, stagger } from "motion/react";
 import { useDashboard } from "@/Providers/dashboard";
+import { useDeletePortfolioMutation } from "@/features/api/portfoliosApi";
 
-import { GetquinLogo } from "./shared/GetquinLogo";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { Skeleton } from "@/components/ui/skeleton";
-// highlight-start
+// UI Components
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -27,7 +24,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-// highlight-end
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
+import { CreatePortfolioDialog } from "./Dialogs/CreatePortfolioDialog";
+
+// Charting
 import {
   ResponsiveContainer,
   LineChart,
@@ -36,15 +38,258 @@ import {
   Tooltip,
   XAxis,
 } from "recharts";
-// highlight-start
-import { Plus, Settings, ArrowDown, ArrowUp, Trash } from "lucide-react";
-// highlight-end
-import { CreatePortfolioDialog } from "./Dialogs/CreatePortfolioDialog";
-import { useDeletePortfolioMutation } from "@/features/api/portfoliosApi";
+
+// Icons
+import {
+  Plus,
+  Settings,
+  ArrowDown,
+  ArrowUp,
+  Trash,
+  LayoutGrid,
+} from "lucide-react";
+import { GetquinLogo } from "./shared/GetquinLogo";
+
+// --- UTILITY & REUSABLE COMPONENTS ---
+const cn = (...classes) => classes.filter(Boolean).join(" ");
+
+const GlowingEffect = memo(
+  ({
+    blur = 0,
+    inactiveZone = 0.7,
+    proximity = 0,
+    spread = 20,
+    glow = false,
+    className,
+    movementDuration = 2,
+    borderWidth = 1,
+    disabled = true,
+  }) => {
+    const containerRef = useRef(null);
+    const lastPosition = useRef({ x: 0, y: 0 });
+    const animationFrameRef = useRef(0);
+
+    const handleMove = useCallback(
+      (e) => {
+        if (!containerRef.current) return;
+        if (animationFrameRef.current)
+          cancelAnimationFrame(animationFrameRef.current);
+        animationFrameRef.current = requestAnimationFrame(() => {
+          const element = containerRef.current;
+          if (!element) return;
+          const { left, top, width, height } = element.getBoundingClientRect();
+          const mouseX = e?.x ?? lastPosition.current.x;
+          const mouseY = e?.y ?? lastPosition.current.y;
+          if (e) lastPosition.current = { x: mouseX, y: mouseY };
+          const center = [left + width * 0.5, top + height * 0.5];
+          const distanceFromCenter = Math.hypot(
+            mouseX - center[0],
+            mouseY - center[1]
+          );
+          const inactiveRadius = 0.5 * Math.min(width, height) * inactiveZone;
+          if (distanceFromCenter < inactiveRadius) {
+            element.style.setProperty("--active", "0");
+            return;
+          }
+          const isActive =
+            mouseX > left - proximity &&
+            mouseX < left + width + proximity &&
+            mouseY > top - proximity &&
+            mouseY < top + height + proximity;
+          element.style.setProperty("--active", isActive ? "1" : "0");
+          if (!isActive) return;
+          const currentAngle =
+            parseFloat(element.style.getPropertyValue("--start")) || 0;
+          let targetAngle =
+            (180 * Math.atan2(mouseY - center[1], mouseX - center[0])) /
+              Math.PI +
+            90;
+          const angleDiff = ((targetAngle - currentAngle + 180) % 360) - 180;
+          const newAngle = currentAngle + angleDiff;
+          animate(currentAngle, newAngle, {
+            duration: movementDuration,
+            ease: [0.16, 1, 0.3, 1],
+            onUpdate: (value) =>
+              element.style.setProperty("--start", String(value)),
+          });
+        });
+      },
+      [inactiveZone, proximity, movementDuration]
+    );
+
+    useEffect(() => {
+      if (disabled) return;
+      const handleScroll = () => handleMove();
+      const handlePointerMove = (e) => handleMove(e);
+      window.addEventListener("scroll", handleScroll, { passive: true });
+      document.body.addEventListener("pointermove", handlePointerMove, {
+        passive: true,
+      });
+      return () => {
+        if (animationFrameRef.current)
+          cancelAnimationFrame(animationFrameRef.current);
+        window.removeEventListener("scroll", handleScroll);
+        document.body.removeEventListener("pointermove", handlePointerMove);
+      };
+    }, [handleMove, disabled]);
+
+    return (
+      <div
+        ref={containerRef}
+        style={{
+          "--blur": `${blur}px`,
+          "--spread": spread,
+          "--start": "0",
+          "--active": "0",
+          "--glowingeffect-border-width": `${borderWidth}px`,
+          "--repeating-conic-gradient-times": "5",
+          "--gradient": `radial-gradient(circle, #dd7bbb 10%, #dd7bbb00 20%), radial-gradient(circle at 40% 40%, #d79f1e 5%, #d79f1e00 15%), radial-gradient(circle at 60% 60%, #5a922c 10%, #5a922c00 20%), radial-gradient(circle at 40% 60%, #4c7894 10%, #4c789400 20%), repeating-conic-gradient(from 236.84deg at 50% 50%, #dd7bbb 0%, #d79f1e calc(25% / var(--repeating-conic-gradient-times)), #5a922c calc(50% / var(--repeating-conic-gradient-times)), #4c7894 calc(75% / var(--repeating-conic-gradient-times)), #dd7bbb calc(100% / var(--repeating-conic-gradient-times)))`,
+        }}
+        className={cn(
+          "pointer-events-none absolute inset-0 rounded-[inherit] opacity-100 transition-opacity",
+          glow && "opacity-100",
+          blur > 0 && "blur-[var(--blur)]",
+          className,
+          disabled && "!hidden"
+        )}
+      >
+        <div
+          className={cn(
+            "glow rounded-[inherit]",
+            'after:content-[""] after:rounded-[inherit] after:absolute after:inset-[calc(-1*var(--glowingeffect-border-width))]',
+            "after:[border:var(--glowingeffect-border-width)_solid_transparent]",
+            "after:[background:var(--gradient)] after:[background-attachment:fixed]",
+            "after:opacity-[var(--active)] after:transition-opacity after:duration-300",
+            "after:[mask-clip:padding-box,border-box]",
+            "after:[mask-composite:intersect]",
+            "after:[mask-image:linear-gradient(#0000,#0000),conic-gradient(from_calc((var(--start)-var(--spread))*1deg),#00000000_0deg,#fff,#00000000_calc(var(--spread)*2deg))]"
+          )}
+        />
+      </div>
+    );
+  }
+);
+GlowingEffect.displayName = "GlowingEffect";
+
+const DashboardCard = ({ children, className }) => (
+  <div className={cn("relative list-none", className)}>
+    <div className="relative h-full rounded-xl border border-neutral-800 p-1.5 md:rounded-2xl md:p-2">
+      <GlowingEffect
+        spread={20}
+        glow={true}
+        disabled={false}
+        proximity={40}
+        inactiveZone={0.2}
+        borderWidth={1.5}
+      />
+      <div className="relative flex h-full flex-col gap-4 overflow-hidden rounded-lg bg-neutral-950/80 p-4 backdrop-blur-sm md:rounded-xl">
+        {children}
+      </div>
+    </div>
+  </div>
+);
+
+const TextGenerateEffect = ({ words, className }) => {
+  const [scope, animate] = useAnimate();
+  useEffect(() => {
+    animate(
+      "span",
+      { opacity: 1, filter: "blur(0px)" },
+      { duration: 0.5, delay: stagger(0.05) }
+    );
+  }, [scope.current, words, animate]);
+
+  return (
+    <div className={cn("font-bold", className)}>
+      <motion.div ref={scope}>
+        {words.split("").map((char, idx) => (
+          <motion.span
+            key={char + idx}
+            className="dark:text-white text-black opacity-0"
+            style={{ filter: "blur(10px)" }}
+          >
+            {char}
+          </motion.span>
+        ))}
+      </motion.div>
+    </div>
+  );
+};
+
+// --- PORTFOLIO WIDGET SUB-COMPONENTS ---
+
+const WidgetHeader = ({ title, onAdd, onSettings, onDelete, hasPortfolio }) => (
+  <div className="flex items-center justify-between">
+    <div className="flex items-center gap-2.5">
+      <LayoutGrid className="h-4 w-4 text-neutral-400" />
+      <h3 className="font-sans text-base font-semibold text-neutral-200">
+        {title}
+      </h3>
+    </div>
+    <div className="flex items-center space-x-2">
+      <Button
+        size="sm"
+        className="bg-neutral-800/50 border border-neutral-700 hover:bg-neutral-700/50 text-neutral-200"
+        onClick={onAdd}
+      >
+        <Plus className="mr-1.5 h-4 w-4" /> Add
+      </Button>
+      {hasPortfolio && (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-neutral-400 hover:bg-neutral-800 hover:text-white"
+            >
+              <Settings className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent
+            align="end"
+            className="bg-neutral-900 border-neutral-800 text-neutral-200"
+          >
+            <DropdownMenuItem
+              onSelect={onSettings}
+              className="focus:bg-neutral-800 focus:text-white"
+            >
+              <Settings className="mr-2 h-4 w-4" />
+              <span>Settings</span>
+            </DropdownMenuItem>
+            <DropdownMenuSeparator className="bg-neutral-800" />
+            <DropdownMenuItem
+              className="text-red-500 focus:bg-red-500/10 focus:text-red-400"
+              onSelect={onDelete}
+            >
+              <Trash className="mr-2 h-4 w-4" />
+              <span>Delete Portfolio</span>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      )}
+    </div>
+  </div>
+);
+
+const ChartTooltip = ({ active, payload, label }) => {
+  if (active && payload && payload.length) {
+    return (
+      <div className="rounded-md border border-neutral-700 bg-neutral-950/80 p-2 text-xs shadow-lg backdrop-blur-sm">
+        <p className="font-bold text-white">{`€${payload[0].value.toFixed(
+          2
+        )}`}</p>
+        <p className="text-neutral-400">{label}</p>
+      </div>
+    );
+  }
+  return null;
+};
+
+// --- MAIN PORTFOLIO WIDGET ---
 
 export const PortfolioWidget = () => {
   const {
-    userId: user, // Assuming user is provided by the dashboard context
+    userId,
     selectedPortfolio,
     isLoadingPortfolios,
     isFetchingPerformance,
@@ -53,239 +298,197 @@ export const PortfolioWidget = () => {
     setTimeframe,
     setSelectedPortfolioId,
   } = useDashboard();
-
   const [isCreatePortfolioDialogOpen, setIsCreatePortfolioDialogOpen] =
     useState(false);
-  // highlight-start
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-
   const [deletePortfolio, { isLoading: isDeletingPortfolio }] =
     useDeletePortfolioMutation();
 
   const handleDeletePortfolio = async () => {
-    console.log("Deleting portfolio:", selectedPortfolio, "for user:", user);
-    if (!selectedPortfolio || !user) return;
-
-    // Call the delete
+    if (!selectedPortfolio || !userId) return;
     try {
       await deletePortfolio({
         portfolioId: selectedPortfolio.id,
-        userId: user,
+        userId,
       }).unwrap();
-      // After successful deletion, RTK Query refetches the portfolio list.
-      // The useDashboard provider will notice the selected ID is gone and should clear it.
-      // This will cause the component to re-render, showing the "select a portfolio" message.
       setIsDeleteDialogOpen(false);
     } catch (error) {
       console.error("Failed to delete portfolio:", error);
-      // Optionally, show an error toast to the user
     }
   };
-  // highlight-end
 
-  const currentValue = performanceData.currentValue;
-  const change = performanceData.changeValue;
-  const changePercent = performanceData.changePercentage;
-  const chartData = performanceData.timeseries;
+  const handlePortfolioCreated = (newPortfolio) => {
+    if (newPortfolio?.id) setSelectedPortfolioId(newPortfolio.id);
+  };
 
-  const isLoading =
-    isLoadingPortfolios || (isFetchingPerformance && chartData.length === 0);
-  if (isLoading && !selectedPortfolio) {
+  const { currentValue, changeValue, changePercentage, timeseries } =
+    performanceData;
+  const isInitialLoading =
+    isLoadingPortfolios || (isFetchingPerformance && timeseries.length === 0);
+  const changeIsPositive = changeValue >= 0;
+
+  if (isInitialLoading && !selectedPortfolio) {
     return (
-      <Card>
-        <CardHeader>
+      <DashboardCard>
+        <div className="flex items-center justify-between">
           <Skeleton className="h-6 w-32" />
-        </CardHeader>
-        <CardContent>
-          <Skeleton className="h-64 w-full" />
-        </CardContent>
-      </Card>
+          <Skeleton className="h-8 w-20" />
+        </div>
+        <Skeleton className="h-10 w-48 mt-4" />
+        <Skeleton className="h-6 w-32 mt-2" />
+        <Skeleton className="h-48 w-full mt-4" />
+      </DashboardCard>
     );
   }
 
-  const handlePortfolioCreated = (newPortfolio) => {
-    if (newPortfolio && newPortfolio.id) {
-      setSelectedPortfolioId(newPortfolio.id);
-    }
-  };
-
   return (
     <>
-      <Card>
-        <CardHeader className="flex-row items-center justify-between">
-          <CardTitle>
-            {selectedPortfolio?.name || "Portfolio Overview"}
-          </CardTitle>
-          <div className="flex items-center space-x-2">
-            <Button
-              size="sm"
-              onClick={() => setIsCreatePortfolioDialogOpen(true)}
-            >
-              <Plus className="mr-2 h-4 w-4" /> Add account
-            </Button>
-            {/*// highlight-start*/}
-            {selectedPortfolio && (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon">
-                    <Settings className="h-5 w-5" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem
-                    onSelect={() =>
-                      alert("Portfolio settings not implemented.")
-                    }
-                  >
-                    <Settings className="mr-2 h-4 w-4" />
-                    <span>Settings</span>
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    className="text-red-600 focus:bg-red-50 focus:text-red-600"
-                    onSelect={(e) => {
-                      e.preventDefault();
-                      setIsDeleteDialogOpen(true);
-                    }}
-                  >
-                    <Trash className="mr-2 h-4 w-4" />
-                    <span>Delete Portfolio</span>
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            )}
-            {/*// highlight-end*/}
+      <DashboardCard>
+        <WidgetHeader
+          title={selectedPortfolio?.name || "Portfolio Overview"}
+          hasPortfolio={!!selectedPortfolio}
+          onAdd={() => setIsCreatePortfolioDialogOpen(true)}
+          onSettings={() => alert("Portfolio settings not implemented.")}
+          onDelete={(e) => {
+            e.preventDefault();
+            setIsDeleteDialogOpen(true);
+          }}
+        />
+
+        {!selectedPortfolio ? (
+          <div className="flex h-64 items-center justify-center text-center text-neutral-500">
+            Please select or create a portfolio to see details.
           </div>
-        </CardHeader>
-        <CardContent>
-          {!selectedPortfolio && !isLoadingPortfolios && (
-            <p className="text-muted-foreground">
-              Please select a portfolio to see details.
-            </p>
-          )}
-          {selectedPortfolio && (
-            <>
-              <div className="mt-4">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <p className="text-4xl font-mono font-bold mt-2">
-                      {isLoading ? (
-                        <Skeleton className="h-10 w-48" />
-                      ) : (
-                        `€${currentValue.toFixed(2)}`
-                      )}
-                    </p>
-                    {!isLoading && currentValue > 0 && (
-                      <div
-                        className={`flex items-center mt-1 ${
-                          change >= 0 ? "text-green-500" : "text-red-500"
-                        }`}
-                      >
-                        {change >= 0 ? (
-                          <ArrowUp className="h-4 w-4" />
-                        ) : (
-                          <ArrowDown className="h-4 w-4" />
-                        )}
-                        <span className="font-semibold font-mono">
-                          {Math.abs(changePercent).toFixed(2)}%
-                        </span>
-                        <span className="text-muted-foreground ml-2 font-mono">
-                          ({change >= 0 ? "+" : ""}€{change.toFixed(2)})
-                        </span>
-                      </div>
+        ) : (
+          <>
+            <div className="mt-2 flex items-start justify-between">
+              <div>
+                {isFetchingPerformance ? (
+                  <Skeleton className="h-10 w-48" />
+                ) : (
+                  <TextGenerateEffect
+                    words={`€${currentValue.toFixed(2)}`}
+                    className="text-4xl font-mono"
+                  />
+                )}
+                {isFetchingPerformance ? (
+                  <Skeleton className="h-5 w-32 mt-2" />
+                ) : (
+                  <div
+                    className={cn(
+                      "flex items-center text-sm",
+                      changeIsPositive ? "text-green-500" : "text-red-500"
                     )}
+                  >
+                    {changeIsPositive ? (
+                      <ArrowUp className="h-3.5 w-3.5" />
+                    ) : (
+                      <ArrowDown className="h-3.5 w-3.5" />
+                    )}
+                    <span className="font-semibold font-mono">
+                      {Math.abs(changePercentage).toFixed(2)}%
+                    </span>
+                    <span className="text-neutral-500 ml-2 font-mono">
+                      ({changeIsPositive ? "+" : ""}€{changeValue.toFixed(2)})
+                    </span>
                   </div>
-                  <div className="flex flex-col items-end">
-                    <ToggleGroup
-                      type="single"
-                      value={timeframe}
-                      onValueChange={(val) => val && setTimeframe(val)}
-                      className="mt-12 bg-transparent"
-                    >
-                      <ToggleGroupItem value="1D">1D</ToggleGroupItem>
-                      <ToggleGroupItem value="1W">1W</ToggleGroupItem>
-                      <ToggleGroupItem value="1M">1M</ToggleGroupItem>
-                      <ToggleGroupItem value="YTD">YTD</ToggleGroupItem>
-                      <ToggleGroupItem value="1Y">1Y</ToggleGroupItem>
-                      <ToggleGroupItem value="Max">Max</ToggleGroupItem>
-                    </ToggleGroup>
-                  </div>
-                </div>
-                <div className="h-64 w-full mt-4 -ml-6">
-                  {isLoading ? (
-                    <Skeleton className="h-full w-full" />
-                  ) : performanceData.isPending ? (
-                    <div className="flex items-center justify-center h-full text-center text-muted-foreground">
-                      <div>
-                        <p>{performanceData.pendingMessage}</p>
-                        <p className="text-sm mt-2">
-                          Your chart will appear here shortly.
-                        </p>
-                      </div>
-                    </div>
-                  ) : chartData.length > 1 ? (
-                    <ResponsiveContainer width="100%" height="100%">
-                      <LineChart
-                        data={chartData}
-                        margin={{ top: 5, right: 20, left: 0, bottom: 5 }}
-                      >
-                        <XAxis dataKey="date" hide />
-                        <YAxis
-                          domain={["dataMin - 100", "dataMax + 100"]}
-                          hide
-                        />
-                        <Tooltip
-                          contentStyle={{
-                            backgroundColor: "hsl(var(--background))",
-                            border: "1px solid hsl(var(--border))",
-                          }}
-                          labelStyle={{ fontWeight: "bold" }}
-                        />
-                        <Line
-                          type="monotone"
-                          dataKey="value"
-                          stroke={change >= 0 ? "#10B981" : "#EF4444"}
-                          strokeWidth={2}
-                          dot={false}
-                        />
-                      </LineChart>
-                    </ResponsiveContainer>
-                  ) : (
-                    <div className="flex items-center justify-center h-full text-muted-foreground">
-                      <p>Not enough data to display chart for this period.</p>
-                    </div>
-                  )}
-                </div>
-                <div className="flex items-center justify-start text-xs text-muted-foreground mt-2 -ml-4">
-                  <span className="font-bold">CHART BY</span>{" "}
-                  <GetquinLogo className="ml-2 h-3 text-card-foreground" />
-                </div>
+                )}
               </div>
-            </>
-          )}
-        </CardContent>
-      </Card>
+              <ToggleGroup
+                type="single"
+                value={timeframe}
+                onValueChange={(v) => v && setTimeframe(v)}
+                className="bg-neutral-900/50 border border-neutral-800 p-0.5 rounded-md"
+              >
+                {["1D", "1W", "1M", "YTD", "1Y", "Max"].map((t) => (
+                  <ToggleGroupItem
+                    key={t}
+                    value={t}
+                    className="text-xs px-2 py-0.5 h-auto data-[state=on]:bg-neutral-700 data-[state=on]:text-white rounded-sm"
+                  >
+                    {t}
+                  </ToggleGroupItem>
+                ))}
+              </ToggleGroup>
+            </div>
+
+            <div className="h-48 w-full mt-2">
+              {isFetchingPerformance ? (
+                <Skeleton className="h-full w-full" />
+              ) : performanceData.isPending ? (
+                <div className="flex h-full items-center justify-center text-center text-neutral-500">
+                  <div>
+                    <p>{performanceData.pendingMessage}</p>
+                    <p className="text-xs mt-1">
+                      Your chart will appear here shortly.
+                    </p>
+                  </div>
+                </div>
+              ) : timeseries.length > 1 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart
+                    data={timeseries}
+                    margin={{ top: 5, right: 5, left: -20, bottom: 0 }}
+                  >
+                    <XAxis dataKey="date" hide />
+                    <YAxis domain={["dataMin - 100", "dataMax + 100"]} hide />
+                    <Tooltip
+                      content={<ChartTooltip />}
+                      cursor={{
+                        stroke: "hsl(var(--neutral-600))",
+                        strokeWidth: 1,
+                        strokeDasharray: "3 3",
+                      }}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="value"
+                      stroke={changeIsPositive ? "#22c55e" : "#ef4444"}
+                      strokeWidth={2}
+                      dot={false}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="flex h-full items-center justify-center text-neutral-500">
+                  Not enough data to display chart.
+                </div>
+              )}
+            </div>
+
+            <div className="flex items-center justify-start text-[10px] text-neutral-600">
+              <span className="font-bold">CHART BY</span>
+              <GetquinLogo className="ml-1.5 h-2.5 text-neutral-400" />
+            </div>
+          </>
+        )}
+      </DashboardCard>
+
       <CreatePortfolioDialog
         isOpen={isCreatePortfolioDialogOpen}
         onOpenChange={setIsCreatePortfolioDialogOpen}
         onPortfolioCreated={handlePortfolioCreated}
       />
-      {/*// highlight-start*/}
+
       <AlertDialog
         open={isDeleteDialogOpen}
         onOpenChange={setIsDeleteDialogOpen}
       >
-        <AlertDialogContent>
+        <AlertDialogContent className="bg-neutral-950 border-neutral-800 text-neutral-200">
           <AlertDialogHeader>
             <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the
-              <span className="font-semibold"> {selectedPortfolio?.name} </span>
-              portfolio and all of its associated data from our servers.
+            <AlertDialogDescription className="text-neutral-400">
+              This action cannot be undone. This will permanently delete the{" "}
+              <span className="font-semibold text-white">
+                {selectedPortfolio?.name}
+              </span>{" "}
+              portfolio and all of its data.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel className="border-neutral-700 bg-neutral-800 hover:bg-neutral-700">
+              Cancel
+            </AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDeletePortfolio}
               disabled={isDeletingPortfolio}
@@ -296,7 +499,6 @@ export const PortfolioWidget = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-      {/*// highlight-end*/}
     </>
   );
 };

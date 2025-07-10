@@ -58,7 +58,7 @@ const addUserIdToRequest = (args, { getState }) => {
 
 // Create a wrapped baseQuery that injects user_id and handles auth
 const baseQueryWithAuth = fetchBaseQuery({
-  mode: "no-cors",
+  // mode: "no-cors",
   baseUrl: "/api",
   prepareHeaders: (headers, { getState }) => {
     // Use auth token from state (if available)
@@ -83,8 +83,8 @@ const baseQueryWithAuth = fetchBaseQuery({
 
 export const baseQuery = async (args, api, extraOptions) => {
   // Inject user_id and any added args into query parameters if available
-  // const adjustedArgs = addUserIdToRequest(args, api);
-  const result = await baseQueryWithAuth(args, api, extraOptions);
+  const adjustedArgs = addUserIdToRequest(args, api);
+  const result = await baseQueryWithAuth(adjustedArgs, api, extraOptions);
 
   // Optional: handle 401 errors (e.g., token expired) here
   if (result.error && result.error.status === 401) {

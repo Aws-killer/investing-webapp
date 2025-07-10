@@ -1,6 +1,9 @@
-import React, { useState, useEffect } from "react";
+// pages/dashboard/Dialogs/AddTransactionDialog.jsx
+"use client";
+
+import React, { useEffect, useState } from "react";
 import { format } from "date-fns";
-import { cn } from "@/lib/utils"; // Assumed to exist in your project, standard with shadcn/ui
+import { cn } from "@/lib/utils";
 import {
   Dialog,
   DialogContent,
@@ -17,7 +20,6 @@ import {
 } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
@@ -30,7 +32,7 @@ import { Badge } from "@/components/ui/badge";
 import { Calendar } from "@/components/ui/calendar";
 import { useToast } from "@/components/ui/use-toast";
 
-// Real hooks from your application
+// Real hooks
 import {
   useAddStockToPortfolioMutation,
   useAddUttToPortfolioMutation,
@@ -51,67 +53,81 @@ import {
   AlertCircle,
   TrendingUp,
   TrendingDown,
-  Hash,
   CheckCircle2,
   XCircle,
-  Calendar as CalendarIcon, // Renamed to avoid conflict with Calendar component
+  Calendar as CalendarIcon,
   Wallet,
+  ChevronDown,
 } from "lucide-react";
 
-// Helper function to format date for API submission
-const formatDateForInput = (date) => {
-  if (!date) return "";
-  const d = new Date(date);
-  const month = `${d.getMonth() + 1}`.padStart(2, "0");
-  const day = `${d.getDate()}`.padStart(2, "0");
-  const year = d.getFullYear();
-  return [year, month, day].join("-");
-};
-
-// Initial state for the form
+// --- HELPERS & STATE ---
+const formatDateForInput = (date) => (date ? format(date, "yyyy-MM-dd") : "");
 const initialFormState = {
   transactionMode: "BUY",
   assetType: "STOCK",
   assetId: "",
   quantity: "",
   price: "",
-  transactionDate: new Date(), // Use Date object
+  transactionDate: new Date(),
   notes: "",
 };
 
-// --- DESIGN SYSTEM CONSTANTS (Inspired by the image) ---
-const ASSET_TYPES = {
-  STOCK: {
-    label: "Stock",
-    icon: TrendingUp,
-    color: "bg-gradient-to-br from-indigo-500 to-blue-500",
-  },
-  UTT: {
-    label: "UTT Fund",
-    icon: Wallet,
-    color: "bg-gradient-to-br from-teal-500 to-cyan-500",
-  },
-  BOND: {
-    label: "Bond",
-    icon: TrendingDown,
-    color: "bg-gradient-to-br from-amber-500 to-orange-500",
-  },
-};
+// --- REDESIGNED UI SUB-COMPONENTS ---
 
-const TRANSACTION_MODES = {
-  BUY: {
-    label: "Buy",
-    icon: Plus,
-    color: "text-teal-600",
-    submitColor: "bg-teal-500 hover:bg-teal-600",
-  },
-  SELL: {
-    label: "Sell",
-    icon: Minus,
-    color: "text-rose-600",
-    submitColor: "bg-rose-500 hover:bg-rose-600",
-  },
-};
+const WidgetHeader = ({ title, description }) => (
+  <DialogHeader className="text-center">
+    <DialogTitle className="text-xl font-bold tracking-tight text-neutral-100">
+      {title}
+    </DialogTitle>
+    <DialogDescription className="text-sm text-neutral-400">
+      {description}
+    </DialogDescription>
+  </DialogHeader>
+);
+
+const ToggleButton = React.forwardRef(({ children, active, ...props }, ref) => (
+  <button
+    ref={ref}
+    type="button"
+    className={cn(
+      "flex-1 px-3 py-2 text-sm font-semibold rounded-md transition-colors",
+      active
+        ? "bg-teal-500/10 text-teal-400"
+        : "text-neutral-400 hover:bg-neutral-800"
+    )}
+    {...props}
+  >
+    {children}
+  </button>
+));
+ToggleButton.displayName = "ToggleButton";
+
+const FormInputGroup = ({ children, className }) => (
+  <div className={cn("flex flex-col gap-1.5", className)}>{children}</div>
+);
+
+const FormInput = React.forwardRef(({ placeholder, error, ...props }, ref) => (
+  <div className="relative">
+    <Input
+      ref={ref}
+      placeholder={placeholder}
+      className={cn(
+        "h-auto bg-transparent border-0 border-b border-neutral-700 rounded-none px-1 py-2 placeholder:text-neutral-500 focus:border-teal-400 focus-visible:ring-0 focus-visible:ring-offset-0 transition-colors",
+        error && "border-red-500 focus:border-red-500"
+      )}
+      {...props}
+    />
+    {error && (
+      <p className="text-xs text-red-400 mt-1.5 flex items-center gap-1">
+        <AlertCircle className="h-3.5 w-3.5" />
+        {error}
+      </p>
+    )}
+  </div>
+));
+FormInput.displayName = "FormInput";
+
+// --- MAIN DIALOG COMPONENT ---
 
 export const AddTransactionDialog = ({
   isOpen,
@@ -125,20 +141,14 @@ export const AddTransactionDialog = ({
   const [formData, setFormData] = useState(initialFormState);
   const [formErrors, setFormErrors] = useState({});
 
-  const {
-    data: stocksList = [],
-    isLoading: isLoadingStocksList,
-    error: errorStocksList,
-  } = useGetStocksQuery(undefined, {
-    skip: formData.assetType !== "STOCK" || !isOpen,
-  });
-  const {
-    data: uttFundsList = [],
-    isLoading: isLoadingUttFundsList,
-    error: errorUttFundsList,
-  } = useGetUttFundsQuery(undefined, {
-    skip: formData.assetType !== "UTT" || !isOpen,
-  });
+  const { data: stocksList = [], isLoading: isLoadingStocksList } =
+    useGetStocksQuery(undefined, {
+      skip: formData.assetType !== "STOCK" || !isOpen,
+    });
+  const { data: uttFundsList = [], isLoading: isLoadingUttFundsList } =
+    useGetUttFundsQuery(undefined, {
+      skip: formData.assetType !== "UTT" || !isOpen,
+    });
 
   const [addStock, { isLoading: isLoadingAddStock }] =
     useAddStockToPortfolioMutation();
@@ -169,37 +179,24 @@ export const AddTransactionDialog = ({
 
   useEffect(() => {
     if (isOpen) {
-      setFormData({
-        ...initialFormState,
-        transactionDate: new Date(), // Reset with a new Date object
-      });
+      setFormData({ ...initialFormState, transactionDate: new Date() });
       setFormErrors({});
     }
   }, [isOpen]);
 
   const validateField = (name, value) => {
     const errors = { ...formErrors };
-    switch (name) {
-      case "assetId":
-        errors.assetId = !value
-          ? `Please select a ${formData.assetType.toLowerCase()}`
-          : undefined;
-        break;
-      case "quantity":
-        errors.quantity =
-          !value || parseFloat(value) <= 0 ? "Quantity must be > 0" : undefined;
-        break;
-      case "price":
-        errors.price =
-          !value || parseFloat(value) <= 0 ? "Price must be > 0" : undefined;
-        break;
-      case "transactionDate":
-        errors.transactionDate = !value ? "Date is required" : undefined;
-        break;
-    }
-    Object.keys(errors).forEach(
-      (key) => errors[key] === undefined && delete errors[key]
-    );
+    if (name === "assetId" && !value) errors.assetId = `Please select an asset`;
+    else delete errors.assetId;
+    if (name === "quantity" && (!value || parseFloat(value) <= 0))
+      errors.quantity = "Must be greater than 0";
+    else delete errors.quantity;
+    if (name === "price" && (!value || parseFloat(value) <= 0))
+      errors.price = "Must be greater than 0";
+    else delete errors.price;
+    if (name === "transactionDate" && !value)
+      errors.transactionDate = "Date is required";
+    else delete errors.transactionDate;
     setFormErrors(errors);
   };
 
@@ -213,27 +210,16 @@ export const AddTransactionDialog = ({
     setFormData((prev) => ({
       ...prev,
       [name]: value,
-      ...(name === "assetType" && { assetId: "", quantity: "", price: "" }),
+      ...(name === "assetType" && { assetId: "" }),
     }));
-    // Reset errors only if changing asset type, otherwise validate the new selection
-    if (name === "assetType") {
-      setFormErrors({});
-    } else {
-      validateField(name, value);
-    }
-  };
-
-  const calculateTotal = () => {
-    const quantity = parseFloat(formData.quantity) || 0;
-    const price = parseFloat(formData.price) || 0;
-    return formData.assetType === "BOND" ? price : quantity * price;
+    if (name === "assetType") setFormErrors({});
+    else validateField(name, value);
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     const errors = {};
-    if (!formData.assetId)
-      errors.assetId = `Select a ${formData.assetType.toLowerCase()}`;
+    if (!formData.assetId) errors.assetId = `Select an asset`;
     if (!formData.quantity || parseFloat(formData.quantity) <= 0)
       errors.quantity = "Must be > 0";
     if (!formData.price || parseFloat(formData.price) <= 0)
@@ -252,491 +238,363 @@ export const AddTransactionDialog = ({
       });
       return;
     }
+
     let mutationPromise;
-    const commonTxData = { notes: formData.notes || null };
-    const parsedAssetId = parseInt(formData.assetId);
-    const parsedQuantity = parseFloat(formData.quantity);
-    const parsedPrice = parseFloat(formData.price);
-    const formattedDate = formatDateForInput(formData.transactionDate); // Format date for API
+    const mutationPayload = {
+      portfolioId: currentPortfolioId,
+      assetId: parseInt(formData.assetId),
+      quantity: parseFloat(formData.quantity),
+      price: parseFloat(formData.price),
+      date: formatDateForInput(formData.transactionDate),
+      notes: formData.notes || null,
+    };
 
     try {
-      if (formData.transactionMode === "BUY") {
-        const buyData = {
-          ...commonTxData,
-          purchase_date: formattedDate,
-        };
-        switch (formData.assetType) {
-          case "STOCK":
-            mutationPromise = addStock({
-              portfolioId: currentPortfolioId,
-              stockData: {
-                stock_id: parsedAssetId,
-                quantity: parsedQuantity,
-                purchase_price: parsedPrice,
-                ...buyData,
-              },
-            }).unwrap();
-            break;
-          case "UTT":
-            mutationPromise = addUtt({
-              portfolioId: currentPortfolioId,
-              uttData: {
-                utt_fund_id: parsedAssetId,
-                units_held: parsedQuantity,
-                purchase_price: parsedPrice,
-                ...buyData,
-              },
-            }).unwrap();
-            break;
-          case "BOND":
-            mutationPromise = addBond({
-              portfolioId: currentPortfolioId,
-              bondData: {
-                bond_id: parsedAssetId,
-                face_value_held: parsedQuantity,
-                purchase_price: parsedPrice,
-                ...buyData,
-              },
-            }).unwrap();
-            break;
-          default:
-            throw new Error("Invalid asset type for BUY operation.");
-        }
-      } else {
-        // SELL mode
-        const sellPayload = {
-          ...commonTxData,
-          sell_date: formattedDate,
-        };
-        switch (formData.assetType) {
-          case "STOCK":
-            mutationPromise = sellStock({
-              portfolioId: currentPortfolioId,
-              stockId: parsedAssetId,
-              sellData: {
-                quantity: parsedQuantity,
-                sell_price: parsedPrice,
-                ...sellPayload,
-              },
-            }).unwrap();
-            break;
-          case "UTT":
-            mutationPromise = sellUtt({
-              portfolioId: currentPortfolioId,
-              uttFundId: parsedAssetId,
-              sellData: {
-                units_to_sell: parsedQuantity,
-                sell_price: parsedPrice,
-                ...sellPayload,
-              },
-            }).unwrap();
-            break;
-          case "BOND":
-            mutationPromise = sellBond({
-              portfolioId: currentPortfolioId,
-              bondId: parsedAssetId,
-              sellData: {
-                face_value_to_sell: parsedQuantity,
-                sell_price: parsedPrice,
-                ...sellPayload,
-              },
-            }).unwrap();
-            break;
-          default:
-            throw new Error("Invalid asset type for SELL operation.");
-        }
+      switch (`${formData.transactionMode}_${formData.assetType}`) {
+        case "BUY_STOCK":
+          mutationPromise = addStock({
+            portfolioId: mutationPayload.portfolioId,
+            stockData: {
+              stock_id: mutationPayload.assetId,
+              quantity: mutationPayload.quantity,
+              purchase_price: mutationPayload.price,
+              purchase_date: mutationPayload.date,
+              notes: mutationPayload.notes,
+            },
+          }).unwrap();
+          break;
+        case "BUY_UTT":
+          mutationPromise = addUtt({
+            portfolioId: mutationPayload.portfolioId,
+            uttData: {
+              utt_fund_id: mutationPayload.assetId,
+              units_held: mutationPayload.quantity,
+              purchase_price: mutationPayload.price,
+              purchase_date: mutationPayload.date,
+              notes: mutationPayload.notes,
+            },
+          }).unwrap();
+          break;
+        case "BUY_BOND":
+          mutationPromise = addBond({
+            portfolioId: mutationPayload.portfolioId,
+            bondData: {
+              bond_id: mutationPayload.assetId,
+              face_value_held: mutationPayload.quantity,
+              purchase_price: mutationPayload.price,
+              purchase_date: mutationPayload.date,
+              notes: mutationPayload.notes,
+            },
+          }).unwrap();
+          break;
+        case "SELL_STOCK":
+          mutationPromise = sellStock({
+            portfolioId: mutationPayload.portfolioId,
+            stockId: mutationPayload.assetId,
+            sellData: {
+              quantity: mutationPayload.quantity,
+              sell_price: mutationPayload.price,
+              sell_date: mutationPayload.date,
+              notes: mutationPayload.notes,
+            },
+          }).unwrap();
+          break;
+        case "SELL_UTT":
+          mutationPromise = sellUtt({
+            portfolioId: mutationPayload.portfolioId,
+            uttFundId: mutationPayload.assetId,
+            sellData: {
+              units_to_sell: mutationPayload.quantity,
+              sell_price: mutationPayload.price,
+              sell_date: mutationPayload.date,
+              notes: mutationPayload.notes,
+            },
+          }).unwrap();
+          break;
+        case "SELL_BOND":
+          mutationPromise = sellBond({
+            portfolioId: mutationPayload.portfolioId,
+            bondId: mutationPayload.assetId,
+            sellData: {
+              face_value_to_sell: mutationPayload.quantity,
+              sell_price: mutationPayload.price,
+              sell_date: mutationPayload.date,
+              notes: mutationPayload.notes,
+            },
+          }).unwrap();
+          break;
+        default:
+          throw new Error("Invalid transaction type.");
       }
       const result = await mutationPromise;
       toast({
         title: (
           <div className="flex items-center">
-            <CheckCircle2 className="mr-2 h-4 w-4 text-emerald-500" /> Success
+            <CheckCircle2 className="mr-2 h-4 w-4 text-emerald-500" />
+            Success
           </div>
         ),
         description: result.message || `Transaction processed successfully!`,
       });
       onOpenChange(false);
     } catch (err) {
-      console.error("Failed to process transaction:", err);
-      const errorDescription =
-        err.data?.detail || err.message || "An unexpected error occurred.";
       toast({
         title: (
           <div className="flex items-center">
-            <XCircle className="mr-2 h-4 w-4 text-red-500" /> Error
+            <XCircle className="mr-2 h-4 w-4 text-red-500" />
+            Error
           </div>
         ),
-        description: String(errorDescription),
+        description: String(
+          err.data?.detail || err.message || "An unexpected error occurred."
+        ),
         variant: "destructive",
       });
     }
   };
 
   const getQuantityLabel = () =>
-    formData.assetType === "STOCK"
-      ? "Shares"
+    formData.assetType === "BOND"
+      ? "Face Value"
       : formData.assetType === "UTT"
       ? "Units"
-      : "Face Value";
+      : "Shares";
   const getPriceLabel = () =>
     formData.assetType === "BOND" ? "Total Price" : "Price per Unit/Share";
-
-  const renderAssetIdInput = () => {
-    // ... (This function remains unchanged)
-    const commonInputClass = `h-11 bg-slate-100 border-slate-200 rounded-lg focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-teal-500 ${
-      formErrors.assetId ? "border-red-400" : ""
-    }`;
-    if (isLoadingAssetOptions)
-      return (
-        <div className="flex items-center justify-center h-11 border rounded-lg bg-slate-100/50">
-          <Loader2 className="h-4 w-4 animate-spin text-slate-400" />
-        </div>
-      );
-    const errorClass =
-      "flex items-center h-11 px-3 border border-red-300 rounded-lg bg-red-50 text-sm text-red-700";
-    if (formData.assetType === "STOCK") {
-      if (errorStocksList)
-        return (
-          <div className={errorClass}>
-            <XCircle className="h-4 w-4 mr-2" />
-            Error
-          </div>
-        );
-      return (
-        <Select
-          value={formData.assetId}
-          onValueChange={(value) => handleSelectChange("assetId", value)}
-        >
-          <SelectTrigger className={commonInputClass}>
-            <SelectValue placeholder="Select Stock" />
-          </SelectTrigger>
-          <SelectContent>
-            {stocksList.map((stock) => (
-              <SelectItem key={stock.id} value={String(stock.id)}>
-                <div className="flex items-center">
-                  <Badge variant="secondary" className="mr-2 text-xs">
-                    {stock.symbol}
-                  </Badge>
-                  <span className="truncate">{stock.name}</span>
-                </div>
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      );
-    }
-    if (formData.assetType === "UTT") {
-      if (errorUttFundsList)
-        return (
-          <div className={errorClass}>
-            <XCircle className="h-4 w-4 mr-2" />
-            Error
-          </div>
-        );
-      return (
-        <Select
-          value={formData.assetId}
-          onValueChange={(value) => handleSelectChange("assetId", value)}
-        >
-          <SelectTrigger className={commonInputClass}>
-            <SelectValue placeholder="Select UTT Fund" />
-          </SelectTrigger>
-          <SelectContent>
-            {uttFundsList.map((fund) => (
-              <SelectItem key={fund.id} value={String(fund.id)}>
-                <div className="flex items-center">
-                  <Badge variant="secondary" className="mr-2 text-xs">
-                    {fund.symbol}
-                  </Badge>
-                  <span className="truncate">{fund.name}</span>
-                </div>
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      );
-    }
-    return (
-      <div className="relative">
-        <Hash className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-        <Input
-          name="assetId"
-          type="number"
-          value={formData.assetId}
-          onChange={handleChange}
-          className={`${commonInputClass} pl-10`}
-          placeholder="Enter Bond ID"
-          required
-        />
-      </div>
-    );
-  };
-
-  const currentMode = TRANSACTION_MODES[formData.transactionMode];
-  const currentAsset = ASSET_TYPES[formData.assetType];
-  const total = calculateTotal();
+  const calculateTotal = () =>
+    (parseFloat(formData.quantity) || 0) * (parseFloat(formData.price) || 0);
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-xl bg-white p-0 rounded-2xl shadow-2xl">
-        <form onSubmit={handleSubmit}>
-          <div className="bg-slate-50/50 px-8 py-6 border-b border-slate-100">
-            {/* ...Header remains unchanged... */}
-            <DialogHeader className="flex flex-row items-center space-x-4">
-              <div
-                className={`flex-shrink-0 p-3 rounded-xl text-white shadow-lg ${currentAsset.color}`}
-              >
-                <currentAsset.icon className="h-6 w-6" />
-              </div>
-              <div>
-                <DialogTitle className="text-xl font-bold tracking-tight text-slate-800">
-                  {currentMode.label} {currentAsset.label}
-                </DialogTitle>
-                <DialogDescription className="text-sm text-slate-500">
-                  Add a new transaction to your portfolio.
-                </DialogDescription>
-              </div>
-            </DialogHeader>
-          </div>
+      <DialogContent className="sm:max-w-md bg-black/80 p-6 border-neutral-800 rounded-xl shadow-2xl backdrop-blur-xl">
+        <form onSubmit={handleSubmit} className="flex flex-col gap-6">
+          <WidgetHeader
+            title="Record a Transaction"
+            description="Add a new buy or sell order to your portfolio."
+          />
 
-          <div className="p-8 space-y-6">
-            <div className="grid grid-cols-2 gap-x-5 gap-y-6">
-              {/* --- Row 1 & 2 remain unchanged... --- */}
-              <div className="space-y-2">
-                <Label className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-                  Transaction
-                </Label>
-                <Select
-                  value={formData.transactionMode}
-                  onValueChange={(value) =>
-                    handleSelectChange("transactionMode", value)
-                  }
+          <div className="flex flex-col gap-5">
+            <fieldset className="p-1.5 bg-neutral-900/70 rounded-lg space-y-1.5">
+              <legend className="text-xs font-semibold text-neutral-500 px-1 mb-1">
+                Action
+              </legend>
+              <div className="flex gap-1.5">
+                <ToggleButton
+                  active={formData.transactionMode === "BUY"}
+                  onClick={() => handleSelectChange("transactionMode", "BUY")}
                 >
-                  <SelectTrigger className="h-11 bg-slate-100 border-slate-200 rounded-lg">
-                    <SelectValue />
+                  <Plus className="h-4 w-4 mr-1.5" />
+                  Buy
+                </ToggleButton>
+                <ToggleButton
+                  active={formData.transactionMode === "SELL"}
+                  onClick={() => handleSelectChange("transactionMode", "SELL")}
+                >
+                  <Minus className="h-4 w-4 mr-1.5" />
+                  Sell
+                </ToggleButton>
+              </div>
+            </fieldset>
+
+            <fieldset className="p-1.5 bg-neutral-900/70 rounded-lg space-y-1.5">
+              <legend className="text-xs font-semibold text-neutral-500 px-1 mb-1">
+                Asset Type
+              </legend>
+              <div className="flex gap-1.5">
+                <ToggleButton
+                  active={formData.assetType === "STOCK"}
+                  onClick={() => handleSelectChange("assetType", "STOCK")}
+                >
+                  <TrendingUp className="h-4 w-4 mr-1.5" />
+                  Stock
+                </ToggleButton>
+                <ToggleButton
+                  active={formData.assetType === "UTT"}
+                  onClick={() => handleSelectChange("assetType", "UTT")}
+                >
+                  <Wallet className="h-4 w-4 mr-1.5" />
+                  UTT
+                </ToggleButton>
+                <ToggleButton
+                  active={formData.assetType === "BOND"}
+                  onClick={() => handleSelectChange("assetType", "BOND")}
+                >
+                  <TrendingDown className="h-4 w-4 mr-1.5" />
+                  Bond
+                </ToggleButton>
+              </div>
+            </fieldset>
+
+            <FormInputGroup>
+              {isLoadingAssetOptions ? (
+                <div className="h-12 flex items-center justify-center">
+                  <Loader2 className="h-5 w-5 animate-spin text-neutral-500" />
+                </div>
+              ) : (
+                <Select
+                  value={formData.assetId}
+                  onValueChange={(v) => handleSelectChange("assetId", v)}
+                >
+                  <SelectTrigger
+                    className={cn(
+                      "h-12 text-base px-1",
+                      formErrors.assetId &&
+                        "border-red-500 focus:border-red-500"
+                    )}
+                  >
+                    <SelectValue placeholder="Select an Asset..." />
                   </SelectTrigger>
-                  <SelectContent>
-                    {Object.entries(TRANSACTION_MODES).map(([key, mode]) => (
-                      <SelectItem key={key} value={key}>
-                        <div className="flex items-center">
-                          <mode.icon className={`h-4 w-4 mr-2 ${mode.color}`} />
-                          {mode.label}
-                        </div>
+                  <SelectContent className="bg-neutral-900 border-neutral-800 text-neutral-200">
+                    {(formData.assetType === "STOCK"
+                      ? stocksList
+                      : uttFundsList
+                    ).map((asset) => (
+                      <SelectItem
+                        key={asset.id}
+                        value={String(asset.id)}
+                        className="focus:bg-neutral-800"
+                      >
+                        <Badge
+                          variant="secondary"
+                          className="mr-2 text-xs bg-neutral-700 text-neutral-300"
+                        >
+                          {asset.symbol}
+                        </Badge>
+                        <span className="truncate">{asset.name}</span>
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
-              </div>
-              <div className="space-y-2">
-                <Label className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-                  Asset Type
-                </Label>
-                <Select
-                  value={formData.assetType}
-                  onValueChange={(value) =>
-                    handleSelectChange("assetType", value)
-                  }
-                >
-                  <SelectTrigger className="h-11 bg-slate-100 border-slate-200 rounded-lg">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Object.entries(ASSET_TYPES).map(([key, asset]) => (
-                      <SelectItem key={key} value={key}>
-                        <div className="flex items-center">
-                          <asset.icon className="h-4 w-4 mr-2 text-slate-500" />
-                          {asset.label}
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2 col-span-2">
-                <Label className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-                  {currentAsset.label}
-                  <span className="text-rose-500 ml-1">*</span>
-                </Label>
-                {renderAssetIdInput()}
-                {formErrors.assetId && (
-                  <p className="text-xs text-rose-600 mt-1 flex items-center">
-                    <AlertCircle className="h-3 w-3 mr-1" />
-                    {formErrors.assetId}
-                  </p>
-                )}
-              </div>
-              <div className="space-y-2">
-                <Label className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-                  {getQuantityLabel()}
-                  <span className="text-rose-500 ml-1">*</span>
-                </Label>
-                <Input
+              )}
+              {formErrors.assetId && (
+                <p className="text-xs text-red-400 mt-1.5 flex items-center gap-1">
+                  <AlertCircle className="h-3.5 w-3.5" />
+                  {formErrors.assetId}
+                </p>
+              )}
+            </FormInputGroup>
+
+            <div className="grid grid-cols-2 gap-4">
+              <FormInputGroup>
+                <FormInput
                   name="quantity"
                   type="number"
                   step="any"
                   min="0"
                   value={formData.quantity}
                   onChange={handleChange}
-                  className={`h-11 bg-slate-100 border-slate-200 rounded-lg ${
-                    formErrors.quantity ? "border-red-400" : ""
-                  }`}
-                  placeholder="e.g., 10"
-                  required
+                  placeholder={getQuantityLabel()}
+                  error={formErrors.quantity}
                 />
-                {formErrors.quantity && (
-                  <p className="text-xs text-rose-600 mt-1">
-                    {formErrors.quantity}
-                  </p>
-                )}
-              </div>
-              <div className="space-y-2">
-                <Label className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-                  {getPriceLabel()}
-                  <span className="text-rose-500 ml-1">*</span>
-                </Label>
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-sans">
-                    €
-                  </span>
-                  <Input
-                    name="price"
-                    type="number"
-                    step="any"
-                    min="0"
-                    value={formData.price}
-                    onChange={handleChange}
-                    className={`h-11 bg-slate-100 border-slate-200 rounded-lg pl-7 ${
-                      formErrors.price ? "border-red-400" : ""
-                    }`}
-                    placeholder="e.g., 150.25"
-                    required
-                  />
-                </div>
-                {formErrors.price && (
-                  <p className="text-xs text-rose-600 mt-1">
-                    {formErrors.price}
-                  </p>
-                )}
-              </div>
+              </FormInputGroup>
+              <FormInputGroup>
+                <FormInput
+                  name="price"
+                  type="number"
+                  step="any"
+                  min="0"
+                  value={formData.price}
+                  onChange={handleChange}
+                  placeholder={getPriceLabel()}
+                  error={formErrors.price}
+                />
+              </FormInputGroup>
             </div>
 
-            <div className="grid grid-cols-2 gap-5">
-              {/* --- NEW CALENDAR INPUT --- */}
-              <div className="space-y-2">
-                <Label className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-                  Date<span className="text-rose-500 ml-1">*</span>
-                </Label>
+            <div className="grid grid-cols-2 gap-4 items-end">
+              <FormInputGroup>
+                <label className="text-xs font-semibold text-neutral-500 px-1">
+                  Date
+                </label>
                 <Popover>
                   <PopoverTrigger asChild>
                     <Button
-                      variant={"outline"}
-                      className={cn(
-                        "w-full justify-start text-left font-normal h-11 bg-slate-100 border-slate-200 rounded-lg hover:bg-slate-200/80 px-3",
-                        !formData.transactionDate && "text-muted-foreground",
-                        formErrors.transactionDate && "border-red-400"
-                      )}
+                      variant="ghost"
+                      className="w-full justify-start text-left font-normal h-auto p-1 border-b border-neutral-700 rounded-none hover:bg-transparent"
                     >
-                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      <CalendarIcon className="mr-2 h-4 w-4 text-neutral-500" />
                       {formData.transactionDate ? (
                         format(formData.transactionDate, "PPP")
                       ) : (
-                        <span>Pick a date</span>
+                        <span className="text-neutral-500">Pick a date</span>
                       )}
                     </Button>
                   </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0">
+                  <PopoverContent
+                    className="w-auto p-0 bg-neutral-900 border-neutral-800"
+                    align="start"
+                  >
                     <Calendar
                       mode="single"
                       selected={formData.transactionDate}
-                      onSelect={(date) =>
-                        handleSelectChange("transactionDate", date)
+                      onSelect={(d) => handleSelectChange("transactionDate", d)}
+                      disabled={(d) =>
+                        d > new Date() || d < new Date("1900-01-01")
                       }
-                      disabled={(date) =>
-                        date > new Date() || date < new Date("1900-01-01")
-                      }
-                      captionLayout="dropdown"
                       initialFocus
+                      classNames={{
+                        head_cell: "text-neutral-400",
+                        cell: "text-neutral-200",
+                        day_selected:
+                          "bg-teal-500 text-white hover:bg-teal-600",
+                        day_today: "text-teal-400",
+                      }}
                     />
                   </PopoverContent>
                 </Popover>
-                {formErrors.transactionDate && (
-                  <p className="text-xs text-rose-600 mt-1">
-                    {formErrors.transactionDate}
-                  </p>
-                )}
-              </div>
-              {total > 0 && (
-                <div className="rounded-lg bg-slate-100 p-3 flex items-center justify-between">
-                  <span className="text-sm font-medium text-slate-600">
-                    Total Value
-                  </span>
-                  <span className="text-lg font-bold text-slate-800">
+              </FormInputGroup>
+              {calculateTotal() > 0 && (
+                <div className="text-right">
+                  <p className="text-xs text-neutral-500">Total Value</p>
+                  <p className="text-xl font-mono font-semibold text-white">
                     €
-                    {total.toLocaleString("en-US", {
+                    {calculateTotal().toLocaleString("en-US", {
                       minimumFractionDigits: 2,
                       maximumFractionDigits: 2,
                     })}
-                  </span>
+                  </p>
                 </div>
               )}
             </div>
 
-            {/* --- Notes, No Portfolio Warning, and Footer remain unchanged --- */}
-            <div className="space-y-2">
-              <Label className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-                Notes{" "}
-                <span className="font-normal normal-case text-slate-400">
-                  (Optional)
-                </span>
-              </Label>
+            <FormInputGroup>
               <Textarea
                 name="notes"
                 value={formData.notes}
                 onChange={handleChange}
-                className="min-h-[70px] bg-slate-100 border-slate-200 rounded-lg resize-none"
-                placeholder="Add any relevant notes..."
+                className="min-h-[60px] bg-transparent border border-neutral-800 rounded-md placeholder:text-neutral-500"
+                placeholder="Optional notes..."
               />
-            </div>
-            {!currentPortfolioId && (
-              <div className="rounded-md bg-rose-50 p-3 text-sm text-rose-700 flex items-center">
-                <AlertCircle className="h-4 w-4 mr-2" />
-                No portfolio selected. Cannot submit.
-              </div>
-            )}
-            <DialogFooter className="gap-3 pt-4 border-t border-slate-100">
-              <DialogClose asChild>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  className="text-slate-600"
-                >
-                  Cancel
-                </Button>
-              </DialogClose>
-              <Button
-                type="submit"
-                disabled={
-                  isLoadingMutation ||
-                  isLoadingAssetOptions ||
-                  !currentPortfolioId ||
-                  Object.keys(formErrors).length > 0
-                }
-                className={`text-white transition-colors rounded-lg shadow-md shadow-slate-300/50 disabled:opacity-50 disabled:cursor-not-allowed ${currentMode.submitColor}`}
-              >
-                {isLoadingMutation || isLoadingAssetOptions ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Processing...
-                  </>
-                ) : (
-                  <>
-                    <currentMode.icon className="mr-2 h-4 w-4" />
-                    {currentMode.label} Transaction
-                  </>
-                )}
-              </Button>
-            </DialogFooter>
+            </FormInputGroup>
           </div>
+
+          <DialogFooter className="flex flex-col gap-2 pt-4 border-t border-neutral-800">
+            <Button
+              type="submit"
+              disabled={
+                isLoadingMutation ||
+                isLoadingAssetOptions ||
+                !currentPortfolioId ||
+                Object.keys(formErrors).length > 0
+              }
+              className="w-full h-12 text-base font-bold bg-teal-500 text-white hover:bg-teal-600 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isLoadingMutation || isLoadingAssetOptions ? (
+                <Loader2 className="h-5 w-5 animate-spin" />
+              ) : (
+                `Confirm ${formData.transactionMode}`
+              )}
+            </Button>
+            <DialogClose asChild>
+              <Button
+                type="button"
+                variant="ghost"
+                className="w-full text-neutral-500 hover:text-white"
+              >
+                Cancel
+              </Button>
+            </DialogClose>
+          </DialogFooter>
         </form>
       </DialogContent>
     </Dialog>
