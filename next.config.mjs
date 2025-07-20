@@ -6,7 +6,8 @@ const nextConfig = {
     return [
       {
         source: "/api/:path*", // local path
-        destination: "https://yakova-xyhlf.hf.space/:path*", // remote API
+        destination:
+          "https://8000-firebase-worker-1753014594177.cluster-c3a7z3wnwzapkx3rfr5kz62dac.cloudworkstations.dev/:path*", // remote API
       },
     ];
   },
