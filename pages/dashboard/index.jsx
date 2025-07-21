@@ -20,7 +20,7 @@ import { TransactionsWidget } from "./TransactionsWidget";
 const DashboardPageInternal = () => {
   return (
     <div className="dark bg-black text-white min-h-screen p-4 md:p-6 font-sans">
-      <div className="max-w-screen-xl px-10 mx-auto">
+      <div className="max-w-screen-xl px-4 sm:px-6 md:px-10 mx-auto">
         <Breadcrumbs />
         <PortfolioSelector />
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
