@@ -4,6 +4,7 @@
 import React, { useState, useMemo } from "react";
 import { useDashboard } from "@/Providers/dashboard";
 import { cn } from "@/lib/utils";
+import { useCurrency } from "@/Providers/CurrencyProvider";
 
 // UI Components
 import { Input } from "@/components/ui/input";
@@ -49,12 +50,16 @@ import {
 import { Button } from "@/components/ui/button";
 
 // --- REUSABLE WIDGET WRAPPER (from previous refactors) ---
-const GlowingEffect = React.memo(({ disabled, ...props }) => {
-  /* ... full component code ... */ return null;
-}); // Placeholder
 const DashboardCard = ({ children, className }) => (
-  <div className={cn("relative list-none", className)}>{children}</div>
-); // Placeholder
+  <div
+    className={cn(
+      "rounded-xl border border-neutral-800 bg-neutral-900 p-6",
+      className
+    )}
+  >
+    {children}
+  </div>
+);
 
 // --- STYLED SUB-COMPONENTS for this widget ---
 
@@ -159,6 +164,7 @@ export const TransactionsWidget = () => {
     selectedPortfolio,
     selectedPortfolioId,
   } = useDashboard();
+  const { formatAmount } = useCurrency();
   const [searchTerm, setSearchTerm] = useState("");
   const [isAddTransactionDialogOpen, setIsAddTransactionDialogOpen] =
     useState(false);
@@ -193,7 +199,7 @@ export const TransactionsWidget = () => {
 
   if (isLoadingTransactions && selectedPortfolio) {
     return (
-      <DashboardCard className="bg-neutral-950 border-neutral-800">
+      <DashboardCard>
         <div className="p-4 space-y-4">
           <div className="flex justify-between items-center">
             <Skeleton className="h-6 w-32 bg-neutral-800" />
@@ -275,16 +281,13 @@ export const TransactionsWidget = () => {
                                   undefined,
                                   { maximumFractionDigits: 4 }
                                 )}{" "}
-                                @ €{parseFloat(tx.price).toFixed(2)}
+                                @ {formatAmount(tx.price)}
                               </div>
                               <div className="col-span-12 md:col-span-4 flex items-center justify-end gap-2">
                                 <div className="text-right">
                                   <p className="font-mono font-medium text-sm text-neutral-100">
-                                    {isBuy ? "-" : "+"}€
-                                    {parseFloat(tx.total_amount).toLocaleString(
-                                      "de-DE",
-                                      { minimumFractionDigits: 2 }
-                                    )}
+                                    {isBuy ? "-" : "+"}
+                                    {formatAmount(tx.total_amount)}
                                   </p>
                                   <p className="text-xs text-neutral-500">
                                     {new Date(

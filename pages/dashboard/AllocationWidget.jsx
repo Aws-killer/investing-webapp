@@ -4,6 +4,7 @@
 import React from "react";
 import { useDashboard } from "@/Providers/dashboard";
 import { cn } from "@/lib/utils";
+import { useCurrency } from "@/Providers/CurrencyProvider";
 
 // UI Components
 import { Skeleton } from "@/components/ui/skeleton";
@@ -12,12 +13,10 @@ import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip } from "recharts";
 import { PieChart as PieChartIcon } from "lucide-react";
 
 // --- REUSABLE WIDGET WRAPPER (Modified for Glass effect) ---
-const DashboardCard = ({ children, className, variant }) => (
+const DashboardCard = ({ children, className }) => (
   <div
     className={cn(
-      "relative list-none",
-      variant === "glass" &&
-        "bg-white/5 border border-white/10 backdrop-blur-md rounded-2xl p-4",
+      "rounded-xl border border-neutral-800 bg-neutral-900 p-6",
       className
     )}
   >
@@ -68,17 +67,14 @@ const StyledTabs = ({ children }) => (
   </Tabs>
 );
 
-const CustomTooltip = ({ active, payload }) => {
+const CustomTooltip = ({ active, payload, formatAmount }) => {
   if (active && payload && payload.length) {
     const data = payload[0].payload;
     return (
       <div className="rounded-md border border-neutral-700 bg-neutral-950/80 p-2 text-xs shadow-lg backdrop-blur-sm">
         <p className="font-bold text-white">{data.name}</p>
         <p className="text-neutral-300">
-          {`${data.value.toFixed(2)}% (€${data.absoluteValue.toLocaleString(
-            "de-DE",
-            { minimumFractionDigits: 2 }
-          )})`}
+          {`${data.value.toFixed(2)}% (${formatAmount(data.absoluteValue)})`}
         </p>
       </div>
     );
@@ -101,10 +97,11 @@ export const AllocationWidget = () => {
     isLoadingTransactions,
     selectedPortfolio,
   } = useDashboard();
+  const { formatAmount } = useCurrency();
 
   if (isLoadingTransactions && selectedPortfolio) {
     return (
-      <DashboardCard variant="glass">
+      <DashboardCard>
         <div className="flex justify-between items-center mb-4">
           <Skeleton className="h-6 w-32 bg-white/10" />
           <Skeleton className="h-5 w-12 bg-white/10" />
@@ -119,7 +116,7 @@ export const AllocationWidget = () => {
   const hasAllocationData = allocation && allocation.length > 0;
 
   return (
-    <DashboardCard variant="glass">
+    <DashboardCard>
       <WidgetHeader title="Allocation" />
 
       <StyledTabs>
@@ -149,7 +146,7 @@ export const AllocationWidget = () => {
                     ))}
                   </Pie>
                   <Tooltip
-                    content={<CustomTooltip />}
+                    content={<CustomTooltip formatAmount={formatAmount} />}
                     cursor={{ fill: "rgba(255, 255, 255, 0.1)" }}
                   />
                 </PieChart>
@@ -159,10 +156,7 @@ export const AllocationWidget = () => {
                   Total Value
                 </p>
                 <p className="text-2xl font-bold font-mono text-white">
-                  €
-                  {totalPortfolioValue.toLocaleString("de-DE", {
-                    minimumFractionDigits: 2,
-                  })}
+                  {formatAmount(totalPortfolioValue)}
                 </p>
               </div>
             </>

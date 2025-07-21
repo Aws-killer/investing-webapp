@@ -5,6 +5,7 @@ import React, { useState } from "react";
 import { motion } from "framer-motion";
 import { useDashboard } from "@/Providers/dashboard";
 import { cn } from "@/lib/utils";
+import { useCurrency } from "@/Providers/CurrencyProvider";
 
 // UI Components
 import {
@@ -37,12 +38,10 @@ import {
 } from "lucide-react";
 
 // --- REUSABLE WIDGET WRAPPER (Modified for Glass effect) ---
-const DashboardCard = ({ children, className, variant }) => (
+const DashboardCard = ({ children, className }) => (
   <div
     className={cn(
-      "relative list-none",
-      variant === "glass" &&
-        "bg-black/20 border border-white/10 backdrop-blur-xl rounded-2xl p-4",
+      "rounded-xl border border-neutral-800 bg-neutral-900 p-6",
       className
     )}
   >
@@ -141,6 +140,7 @@ export const PositionsWidget = () => {
     selectedPortfolio,
     selectedPortfolioId,
   } = useDashboard();
+  const { formatAmount } = useCurrency();
   const [isAddTransactionDialogOpen, setIsAddTransactionDialogOpen] =
     useState(false);
 
@@ -162,7 +162,7 @@ export const PositionsWidget = () => {
 
   if (isLoadingPositions && selectedPortfolio) {
     return (
-      <DashboardCard variant="glass">
+      <DashboardCard>
         <div className="space-y-4">
           <div className="flex justify-between items-center">
             <Skeleton className="h-6 w-32 bg-white/10" />
@@ -181,7 +181,7 @@ export const PositionsWidget = () => {
 
   return (
     <>
-      <DashboardCard variant="glass">
+      <DashboardCard>
         <div className="flex flex-col gap-4">
           <WidgetHeader
             title="Positions"
@@ -272,13 +272,10 @@ export const PositionsWidget = () => {
                           </TableCell>
                           <TableCell className="text-right font-mono">
                             <p className="text-sm font-semibold text-neutral-100">
-                              €
-                              {pos.current_value.toLocaleString(undefined, {
-                                minimumFractionDigits: 2,
-                              })}
+                              {formatAmount(pos.current_value)}
                             </p>
                             <p className="text-xs text-neutral-500">
-                              €{pos.current_price}
+                              {formatAmount(pos.current_price)}
                             </p>
                           </TableCell>
                           <TableCell className="text-right font-mono">
@@ -288,10 +285,8 @@ export const PositionsWidget = () => {
                                 isPositive ? "text-green-400" : "text-red-400"
                               )}
                             >
-                              {isPositive ? "+" : ""}€
-                              {pos.profit_loss.toLocaleString(undefined, {
-                                minimumFractionDigits: 2,
-                              })}
+                              {isPositive ? "+" : ""}
+                              {formatAmount(pos.profit_loss)}
                             </p>
                             <div
                               className={cn(
