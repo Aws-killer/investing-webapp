@@ -32,3 +32,4 @@ export const Header = () => (
     </CardDescription>
   </div>
 );
+export default Header;

@@ -26,7 +26,7 @@ import {
   useAddUttToPortfolioMutation,
   useAddBondToPortfolioMutation,
 } from "@/features/api/portfoliosApi"; // Adjust path
-import { useDashboard } from "@/features/dashboard/DashboardContext"; // To get selectedPortfolioId
+import { useDashboard } from "@/Providers/dashboard";
 
 // Helper for date formatting
 const formatDateForInput = (date) => {
@@ -342,3 +342,5 @@ export const AddTransactionDialog = ({
     </Dialog>
   );
 };
+
+export default AddTransactionDialog;

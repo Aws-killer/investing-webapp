@@ -85,3 +85,4 @@ export const DividendsTable = () => {
     </Table>
   );
 };
+export default DividendsTable;

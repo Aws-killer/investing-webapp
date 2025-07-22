@@ -327,3 +327,5 @@ export const PositionsWidget = () => {
     </>
   );
 };
+
+export default PositionsWidget;

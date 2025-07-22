@@ -190,3 +190,4 @@ export const AllocationWidget = () => {
     </DashboardCard>
   );
 };
+export default AllocationWidget;

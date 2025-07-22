@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Landmark, Receipt, TrendingUp, CalendarClock } from "lucide-react";
 
-export const SummaryCards = () => {
+const SummaryCards = () => {
   const { positions, isLoadingPositions, selectedPortfolio } = useDashboard();
 
   const summary = useMemo(() => {
@@ -111,3 +111,4 @@ export const SummaryCards = () => {
     </div>
   );
 };
+export default SummaryCards;

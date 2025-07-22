@@ -266,7 +266,7 @@ const DesktopTransactionItem = ({ tx, formatAmount, getAssetIcon }) => {
 
 // --- MAIN TRANSACTIONS WIDGET ---
 
-export const TransactionsWidget = () => {
+export  const TransactionsWidget = () => {
   const {
     transactions,
     isLoadingTransactions,
@@ -382,3 +382,5 @@ export const TransactionsWidget = () => {
     </>
   );
 };
+
+export default TransactionsWidget;

@@ -18,3 +18,5 @@ export const PerformanceWidget = () => {
     </Card>
   );
 };
+
+export default PerformanceWidget;

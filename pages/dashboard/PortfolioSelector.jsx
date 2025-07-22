@@ -61,3 +61,6 @@ export const PortfolioSelector = () => {
     </div>
   );
 };
+
+
+export default PortfolioSelector;

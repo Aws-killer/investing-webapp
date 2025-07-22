@@ -16,3 +16,4 @@ export const AIWidget = () => {
     </Card>
   );
 };
+export default AIWidget;

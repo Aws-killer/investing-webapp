@@ -12,3 +12,5 @@ export const PremiumBadge = () => (
     PREMIUM
   </Badge>
 );
+
+export default PremiumBadge;

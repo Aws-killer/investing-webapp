@@ -600,3 +600,5 @@ export const AddTransactionDialog = ({
     </Dialog>
   );
 };
+
+export default AddTransactionDialog;

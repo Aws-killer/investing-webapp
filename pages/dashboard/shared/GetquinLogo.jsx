@@ -16,3 +16,5 @@ export const GetquinLogo = (props) => (
     ></path>
   </svg>
 );
+
+export default GetquinLogo;

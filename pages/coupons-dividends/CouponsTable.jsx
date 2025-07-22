@@ -97,3 +97,4 @@ export const CouponsTable = () => {
     </Table>
   );
 };
+export default CouponsTable;

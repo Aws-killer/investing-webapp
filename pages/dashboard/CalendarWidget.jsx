@@ -79,3 +79,4 @@ export const CalendarWidget = () => {
     </DashboardCard>
   );
 };
+export default CalendarWidget;

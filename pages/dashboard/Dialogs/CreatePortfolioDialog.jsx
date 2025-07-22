@@ -177,3 +177,4 @@ export const CreatePortfolioDialog = ({
     </Dialog>
   );
 };
+export default CreatePortfolioDialog;

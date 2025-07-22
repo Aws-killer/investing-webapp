@@ -383,3 +383,5 @@ export const PortfolioWidget = () => {
     </>
   );
 };
+
+export default PortfolioWidget;
