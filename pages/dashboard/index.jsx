@@ -15,11 +15,18 @@ import { PortfolioSelector } from "./PortfolioSelector";
 import { PortfolioWidget } from "./PortfolioWidget";
 import { PositionsWidget } from "./PositionsWidget";
 import { TransactionsWidget } from "./TransactionsWidget";
+import InstallPWA from "@/components/InstallPWA";
 
 // This component lays out the dashboard structure
 const DashboardPageInternal = () => {
   return (
-    <div className="dark bg-black text-white min-h-screen p-4 md:p-6 font-sans">
+    // UPDATED: Changed `p-4` to `px-0 py-4` to remove horizontal gaps on mobile
+    // while keeping vertical spacing. The `md:p-6` class will re-apply padding on larger screens.
+    <div className="dark bg-black text-white min-h-screen px-0 py-4 md:p-6 font-sans">
+      <InstallPWA />
+      {/* UPDATED: Changed `px-4` to `px-4` to prevent double-padding on mobile.
+          The parent now controls the edge spacing. This container now adds padding
+          back starting from the `sm` breakpoint. */}
       <div className="max-w-screen-xl px-4 sm:px-6 md:px-10 mx-auto">
         <Breadcrumbs />
         <PortfolioSelector />

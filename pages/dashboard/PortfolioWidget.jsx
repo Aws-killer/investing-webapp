@@ -57,7 +57,7 @@ const cn = (...classes) => classes.filter(Boolean).join(" ");
 const DashboardCard = ({ children, className }) => (
   <div
     className={cn(
-      "rounded-xl border border-neutral-800 bg-neutral-900 p-6",
+      "rounded-xl border border-neutral-800 bg-neutral-900 p-4 md:p-6", // Adjusted padding for mobile
       className
     )}
   >
@@ -236,14 +236,16 @@ export const PortfolioWidget = () => {
           </div>
         ) : (
           <>
-            <div className="mt-2 flex items-start justify-between">
-              <div>
+            {/* --- Responsive Layout for Value and Timeframe Toggles --- */}
+            <div className="mt-4 flex flex-col md:flex-row md:items-start md:justify-between">
+              {/* --- Value and Percentage Change --- */}
+              <div className="order-2 md:order-1">
                 {isFetchingPerformance ? (
                   <Skeleton className="h-10 w-48" />
                 ) : (
                   <TextGenerateEffect
                     words={formatAmount(currentValue)}
-                    className="text-4xl font-mono"
+                    className="text-3xl md:text-4xl font-mono" // Responsive font size
                   />
                 )}
                 {isFetchingPerformance ? (
@@ -270,25 +272,28 @@ export const PortfolioWidget = () => {
                   </div>
                 )}
               </div>
-              <ToggleGroup
-                type="single"
-                value={timeframe}
-                onValueChange={(v) => v && setTimeframe(v)}
-                className="bg-neutral-900/50 border border-neutral-800 p-0.5 rounded-md"
-              >
-                {["1D", "1W", "1M", "YTD", "1Y", "Max"].map((t) => (
-                  <ToggleGroupItem
-                    key={t}
-                    value={t}
-                    className="text-xs px-2 py-0.5 h-auto data-[state=on]:bg-neutral-700 data-[state=on]:text-white rounded-sm"
-                  >
-                    {t}
-                  </ToggleGroupItem>
-                ))}
-              </ToggleGroup>
+              {/* --- Timeframe Toggles --- */}
+              <div className="order-1 md:order-2 mb-4 md:mb-0 self-start md:self-auto">
+                <ToggleGroup
+                  type="single"
+                  value={timeframe}
+                  onValueChange={(v) => v && setTimeframe(v)}
+                  className="bg-neutral-900/50 border border-neutral-800 p-0.5 rounded-md"
+                >
+                  {["1D", "1W", "1M", "YTD", "1Y", "Max"].map((t) => (
+                    <ToggleGroupItem
+                      key={t}
+                      value={t}
+                      className="text-xs px-2 py-0.5 h-auto data-[state=on]:bg-neutral-700 data-[state=on]:text-white rounded-sm"
+                    >
+                      {t}
+                    </ToggleGroupItem>
+                  ))}
+                </ToggleGroup>
+              </div>
             </div>
 
-            <div className="h-48 w-full mt-2">
+            <div className="h-48 w-full mt-4">
               {isFetchingPerformance ? (
                 <Skeleton className="h-full w-full" />
               ) : performanceData.isPending ? (
@@ -332,7 +337,7 @@ export const PortfolioWidget = () => {
               )}
             </div>
 
-            <div className="flex items-center justify-start text-[10px] text-neutral-600">
+            <div className="flex items-center justify-start text-[10px] text-neutral-600 mt-2">
               <span className="font-bold">CHART BY</span>
               <GetquinLogo className="ml-1.5 h-2.5 text-neutral-400" />
             </div>
