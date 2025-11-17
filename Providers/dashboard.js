@@ -147,15 +147,40 @@ export const DashboardProvider = ({ children }) => {
   // The primary total value now comes from the performance endpoint.
   const totalPortfolioValue = performanceData.currentValue;
 
-  // Update allocation calculation to use asset names and the new total value.
+  // Update allocation calculation to prefer `positions` (current market values).
+  // Fallback to transactions-based cost-basis allocation if positions are not available.
   const allocation = useMemo(() => {
-    if (
-      !transactions ||
-      transactions.length === 0 ||
-      totalPortfolioValue === 0
-    ) {
+    if (!totalPortfolioValue || totalPortfolioValue === 0) {
       return [];
     }
+
+    const colors = [
+      "#3B82F6",
+      "#10B981",
+      "#F59E0B",
+      "#EF4444",
+      "#8B5CF6",
+      "#EC4899",
+    ];
+    let colorIndex = 0;
+
+    // If we have positions from the API, use their `current_value` (market value).
+    if (positions && positions.length > 0) {
+      return positions
+        .filter((p) => parseFloat(p.current_value) > 0)
+        .map((p) => ({
+          name: p.asset_name || p.asset_symbol || `${p.asset_type} ID ${p.asset_id}`,
+          value: (parseFloat(p.current_value) / totalPortfolioValue) * 100,
+          absoluteValue: parseFloat(p.current_value),
+          color: colors[colorIndex++ % colors.length],
+        }));
+    }
+
+    // Fallback: derive allocation from transactions (cost-basis) if positions missing.
+    if (!transactions || transactions.length === 0) {
+      return [];
+    }
+
     const holdings = new Map();
     transactions.forEach((tx) => {
       const assetKey = `${tx.asset_type}_${tx.asset_id}`;
@@ -168,7 +193,7 @@ export const DashboardProvider = ({ children }) => {
           totalCost: 0,
           asset_type: tx.asset_type,
           asset_id: tx.asset_id,
-          name: tx.asset_name || tx.asset_type, // Use real asset name
+          name: tx.asset_name || tx.asset_type,
         });
       }
       const currentHolding = holdings.get(assetKey);
@@ -188,17 +213,6 @@ export const DashboardProvider = ({ children }) => {
       holdings.set(assetKey, currentHolding);
     });
 
-    const colors = [
-      "#3B82F6",
-      "#10B981",
-      "#F59E0B",
-      "#EF4444",
-      "#8B5CF6",
-      "#EC4899",
-    ];
-    let colorIndex = 0;
-
-    // Note: This allocation is by *cost basis*. The percentage is relative to current market value.
     return Array.from(holdings.values())
       .filter((h) => h.quantity > 0 && h.totalCost > 0)
       .map((h) => ({
@@ -207,7 +221,7 @@ export const DashboardProvider = ({ children }) => {
         absoluteValue: h.totalCost,
         color: colors[colorIndex++ % colors.length],
       }));
-  }, [transactions, totalPortfolioValue]);
+  }, [positions, transactions, totalPortfolioValue]);
 
   const value = {
     userId,
