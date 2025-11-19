@@ -118,3 +118,5 @@ export const CreatePortfolioDialog = ({ isOpen, onOpenChange, onPortfolioCreated
     </Dialog>
   );
 };
+
+export default CreatePortfolioDialog;

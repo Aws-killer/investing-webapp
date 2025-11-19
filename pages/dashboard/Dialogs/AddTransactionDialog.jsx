@@ -303,3 +303,5 @@ export const AddTransactionDialog = ({ isOpen, onOpenChange, portfolioIdFromWidg
     </Dialog>
   );
 };
+
+export default AddTransactionDialog;
