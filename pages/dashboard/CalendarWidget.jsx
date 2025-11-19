@@ -4,79 +4,51 @@
 import React from "react";
 import { useDashboard } from "@/Providers/dashboard";
 import { useCurrency } from "@/Providers/CurrencyProvider";
-import { Skeleton } from "@/components/ui/skeleton";
-import { cn } from "@/lib/utils";
+import { CalendarDays } from "lucide-react";
 
-const DashboardCard = ({ children, className }) => (
-  <div
-    className={cn(
-      "rounded-xl border border-neutral-800 bg-neutral-900 p-6",
-      className
-    )}
-  >
+const WidgetCard = ({ children }) => (
+  <div className="bg-[#121212] rounded-xl border border-zinc-800 p-5">
     {children}
   </div>
 );
 
 export const CalendarWidget = () => {
-  const { calendarEvents, isLoadingCalendar, selectedPortfolio } =
-    useDashboard();
+  const { calendarEvents, selectedPortfolio } = useDashboard();
   const { formatAmount } = useCurrency();
 
   if (!selectedPortfolio) return null;
 
   return (
-    <DashboardCard>
-      <h3 className="font-sans text-base font-semibold text-neutral-200 mb-4">
-        Upcoming Events
-      </h3>
-      {isLoadingCalendar && (
-        <div className="space-y-4">
-          <Skeleton className="h-12 w-full" />
-          <Skeleton className="h-12 w-full" />
-          <Skeleton className="h-12 w-full" />
-        </div>
-      )}
-      {!isLoadingCalendar && calendarEvents.length === 0 && (
-        <p className="text-center text-muted-foreground py-4">
-          No upcoming dividend or coupon events in the next 90 days.
-        </p>
-      )}
-      {!isLoadingCalendar && calendarEvents.length > 0 && (
-        <div className="space-y-3">
-          {calendarEvents.map((event, index) => (
-            <div
-              key={index}
-              className="flex items-center space-x-4 p-2 rounded-lg hover:bg-neutral-800/50"
-            >
-              <div className="flex flex-col items-center w-16 text-center">
-                <span className="text-xs font-mono text-muted-foreground">
-                  {new Date(event.event_date).toLocaleDateString(undefined, {
-                    month: "short",
-                  })}
-                </span>
-                <span className="text-lg font-bold">
-                  {new Date(event.event_date).getDate()}
-                </span>
-              </div>
-              <div className="flex-grow">
-                <p className="font-semibold text-sm text-neutral-200">
-                  {event.asset_name} ({event.asset_symbol})
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  {event.event_type}
-                </p>
-              </div>
-              <div className="text-right">
-                <p className="font-mono text-sm text-green-500">
-                  +{formatAmount(event.estimated_amount)}
-                </p>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-    </DashboardCard>
+    <WidgetCard>
+      <div className="flex items-center gap-2 mb-5">
+          <CalendarDays className="text-zinc-400 h-4 w-4" />
+          <h3 className="text-sm font-bold text-zinc-100">Upcoming Events</h3>
+      </div>
+
+      <div className="space-y-4">
+         {(!calendarEvents || calendarEvents.length === 0) ? (
+             <p className="text-xs text-zinc-500">No upcoming events.</p>
+         ) : (
+             calendarEvents.slice(0, 3).map((event, i) => (
+                 <div key={i} className="flex items-center justify-between group">
+                     <div className="flex items-center gap-3">
+                         <div className="bg-zinc-800 h-10 w-10 rounded-lg flex flex-col items-center justify-center border border-zinc-700/50">
+                             <span className="text-[10px] text-zinc-500 uppercase">{new Date(event.event_date).toLocaleString('default', { month: 'short' })}</span>
+                             <span className="text-sm font-bold text-zinc-200">{new Date(event.event_date).getDate()}</span>
+                         </div>
+                         <div>
+                             <div className="text-xs font-bold text-zinc-200">{event.asset_symbol}</div>
+                             <div className="text-[10px] text-zinc-500 uppercase tracking-wider">{event.event_type}</div>
+                         </div>
+                     </div>
+                     <div className="text-sm font-mono text-emerald-400">
+                         +{formatAmount(event.estimated_amount)}
+                     </div>
+                 </div>
+             ))
+         )}
+      </div>
+    </WidgetCard>
   );
 };
 export default CalendarWidget;

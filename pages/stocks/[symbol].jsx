@@ -1,361 +1,425 @@
+import React, { useState, useMemo, memo } from 'react';
 import { useRouter } from 'next/router';
+import {
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+  CartesianGrid
+} from "recharts";
+import { 
+  Star, 
+  Plus, 
+  Search,
+  Bell,
+  Share,
+  PenLine,
+  MessageSquare,
+  TrendingUp,
+  User,
+  ChevronDown,
+  Copy,
+  ArrowUpRight
+} from 'lucide-react';
+
+// --- MOCK HOOKS (Replace with your actual imports) ---
 import {
   useGetStocksQuery,
   useGetStockPricesQuery,
   useGetStockMetricsQuery,
   useGetStockDividendsQuery,
 } from '@/features/api/stocksApi';
-import { useState, memo, useMemo } from 'react';
-import { motion } from "framer-motion";
-import { useCurrency } from '@/Providers/CurrencyProvider';
-import { AppNavbar } from '@/components/AppNavbar'; // Import the new navbar
-import { Skeleton } from '@/components/ui/skeleton';
 
-import { Button } from '@/components/ui/button';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
-import {
-    ResponsiveContainer,
-    ComposedChart,
-    Line,
-    Bar,
-    YAxis,
-    Tooltip,
-    XAxis,
-  } from "recharts";
-import { ArrowUp, ArrowDown, ChevronDown, Star, Upload, Copy, Building, Briefcase, Users, Link as LinkIcon, Loader2, Plus } from 'lucide-react';
-
+/* -------------------------------- UTILS ---------------------------------- */
 const cn = (...classes) => classes.filter(Boolean).join(" ");
 
-// --- Reusable Card Component ---
-const InfoCard = ({ children, className }) => (
-    <div className={cn("rounded-xl border border-neutral-800 bg-neutral-900 p-6", className)}>
-      {children}
-    </div>
-);
+// Specialized formatter for TZS (Tanzanian Shilling)
+const formatTZS = (value, options = {}) => {
+  const { 
+    isCompact = false, 
+    decimals = 2 
+  } = options;
 
-const StockPageSkeleton = () => (
-    <div className="dark bg-neutral-950 text-neutral-200 min-h-screen font-sans animate-pulse">
-        <AppNavbar />
-        <main className="max-w-screen-2xl mx-auto p-4 md:p-8">
-            {/* Header Skeleton */}
-            <header className="mb-8">
-                <div className="flex items-center justify-between gap-4 mb-4">
-                    <div className="flex items-center space-x-4">
-                        <Skeleton className="w-16 h-16 rounded-lg bg-neutral-800" />
-                        <div>
-                            <Skeleton className="h-10 w-48 mb-2 bg-neutral-800" />
-                            <Skeleton className="h-6 w-32 bg-neutral-800" />
-                        </div>
-                    </div>
-                    <div className="flex items-center space-x-3">
-                        <Skeleton className="h-10 w-32 rounded-md bg-neutral-800" />
-                        <Skeleton className="h-10 w-40 rounded-md bg-neutral-800" />
-                    </div>
-                </div>
-                <div className="flex items-baseline space-x-3">
-                    <Skeleton className="h-14 w-56 bg-neutral-800" />
-                    <Skeleton className="h-8 w-40 bg-neutral-800" />
-                </div>
-            </header>
+  if (value === null || value === undefined || value === '') return '-';
+  const num = Number(value);
+  if (isNaN(num)) return '-';
 
-            {/* Main Content Grid Skeleton */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                {/* Left Column Skeleton */}
-                <div className="lg:col-span-2 flex flex-col gap-8">
-                    <InfoCard>
-                        <div className="flex justify-between items-center mb-4">
-                            <Skeleton className="h-8 w-40 bg-neutral-800" />
-                            <div className="flex space-x-1">
-                                <Skeleton className="h-8 w-12 bg-neutral-800" />
-                                <Skeleton className="h-8 w-12 bg-neutral-800" />
-                                <Skeleton className="h-8 w-12 bg-neutral-800" />
-                            </div>
-                        </div>
-                        <Skeleton className="h-96 w-full bg-neutral-800" />
-                    </InfoCard>
-                    <InfoCard>
-                        <Skeleton className="h-8 w-48 mb-4 bg-neutral-800" />
-                        <div className="space-y-2">
-                            <Skeleton className="h-12 w-full bg-neutral-800" />
-                            <Skeleton className="h-12 w-full bg-neutral-800" />
-                            <Skeleton className="h-12 w-full bg-neutral-800" />
-                        </div>
-                    </InfoCard>
-                </div>
+  if (isCompact) {
+    return new Intl.NumberFormat('en-TZ', {
+      notation: "compact",
+      compactDisplay: "short",
+      maximumFractionDigits: 2
+    }).format(num);
+  }
 
-                {/* Right Sidebar Skeleton */}
-                <div className="lg:col-span-1 space-y-8">
-                    <InfoCard>
-                        <Skeleton className="h-8 w-40 mb-4 bg-neutral-800" />
-                        <div className="space-y-4">
-                            <Skeleton className="h-6 w-full bg-neutral-800" />
-                            <Skeleton className="h-6 w-full bg-neutral-800" />
-                            <Skeleton className="h-6 w-full bg-neutral-800" />
-                            <Skeleton className="h-6 w-full bg-neutral-800" />
-                        </div>
-                    </InfoCard>
-                    <InfoCard>
-                        <Skeleton className="h-8 w-48 mb-4 bg-neutral-800" />
-                        <div className="space-y-4">
-                            <Skeleton className="h-10 w-full bg-neutral-800" />
-                            <Skeleton className="h-10 w-full bg-neutral-800" />
-                            <Skeleton className="h-10 w-full bg-neutral-800" />
-                        </div>
-                    </InfoCard>
-                </div>
-            </div>
-        </main>
-    </div>
-);
-
-
-// --- FAQ Accordion Component ---
-const FaqItem = ({ question, children }) => {
-    const [isOpen, setIsOpen] = useState(false);
-    return (
-        <div className="border-b border-neutral-800 py-4 last:border-b-0">
-            <button onClick={() => setIsOpen(!isOpen)} className="flex w-full items-center justify-between text-left text-lg">
-                <span className="font-semibold text-neutral-100">{question}</span>
-                <ChevronDown className={cn("h-5 w-5 text-neutral-400 transform transition-transform duration-300", isOpen && "rotate-180")} />
-            </button>
-            {isOpen && (
-                <motion.div
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: 'auto' }}
-                    exit={{ opacity: 0, height: 0 }}
-                    className="mt-3 text-neutral-300 text-base"
-                >
-                    {children}
-                </motion.div>
-            )}
-        </div>
-    );
+  return new Intl.NumberFormat('en-TZ', {
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals
+  }).format(num);
 };
 
-// --- Custom Chart Tooltip ---
-const ChartTooltip = ({ active, payload, label, formatAmount }) => {
-    if (active && payload && payload.length) {
-        const price = payload.find(p => p.dataKey === 'closing_price');
-        const volume = payload.find(p => p.dataKey === 'volume');
-        const date = new Date(label).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+/* ---------------------------- COMPONENTS --------------------------------- */
 
-        return (
-        <div className="rounded-lg border border-neutral-700 bg-neutral-900/80 p-3 text-sm shadow-lg backdrop-blur-sm">
-            <p className="font-bold text-white mb-1">{date}</p>
-            {price && <p className="text-teal-400">{`Price: ${formatAmount(price.value)}`}</p>}
-            {volume && <p className="text-sky-400">{`Volume: ${Number(volume.value).toLocaleString()}`}</p>}
-        </div>
-        );
-    }
-    return null;
+// 1. Global Navigation Bar
+const Navbar = () => (
+  <nav className="sticky top-0 z-50 bg-[#0a0a0a] border-b border-zinc-800 h-14 flex items-center justify-between px-4 lg:px-6">
+    {/* Logo Area */}
+    <div className="flex items-center gap-6">
+      <div className="font-bold text-lg text-zinc-200 tracking-tight">getquin</div>
+    </div>
+
+    {/* Search Bar - Centered */}
+    <div className="hidden md:flex flex-1 max-w-xl mx-6">
+      <div className="relative w-full group">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-500" />
+        <input 
+          type="text" 
+          placeholder="Search for stocks, etfs or profiles" 
+          className="w-full bg-[#1a1a1a] border border-transparent focus:border-zinc-700 rounded-md py-1.5 pl-10 pr-4 text-sm text-zinc-200 focus:outline-none transition-all placeholder:text-zinc-600"
+        />
+      </div>
+    </div>
+
+    {/* Right Actions */}
+    <div className="flex items-center gap-3 text-zinc-400">
+      <button className="p-2 hover:text-white transition-colors"><TrendingUp size={18} /></button>
+      <button className="p-2 hover:text-white transition-colors"><PenLine size={18} /></button>
+      <button className="p-2 hover:text-white transition-colors"><MessageSquare size={18} /></button>
+      <button className="p-2 hover:text-white transition-colors"><Star size={18} /></button>
+      <button className="p-2 hover:text-white transition-colors"><Bell size={18} /></button>
+      
+      <button className="ml-2 bg-white text-black text-xs font-bold px-3 py-1.5 rounded-md hover:bg-zinc-200 transition-colors flex items-center gap-1">
+        <span className="w-2 h-2 rounded-full bg-black border border-zinc-400"></span> Upgrade
+      </button>
+      
+      <button className="ml-2 p-1 rounded-full bg-zinc-800 hover:bg-zinc-700 transition-colors">
+        <User size={20} className="text-zinc-400" />
+      </button>
+    </div>
+  </nav>
+);
+
+// 2. Card Container (The dark boxes)
+const Card = ({ children, className, title, action }) => (
+  <div className={cn("bg-[#121212] rounded-lg border border-zinc-800/50 p-5", className)}>
+    {(title || action) && (
+      <div className="flex items-center justify-between mb-4">
+        {title && <h3 className="text-sm font-bold text-zinc-100">{title}</h3>}
+        {action}
+      </div>
+    )}
+    {children}
+  </div>
+);
+
+// 3. FAQ Accordion Item
+const FAQItem = ({ question }) => (
+  <div className="flex items-center justify-between py-4 border-b border-zinc-800 cursor-pointer group">
+    <span className="text-sm font-semibold text-zinc-200 group-hover:text-white transition-colors">{question}</span>
+    <ChevronDown size={16} className="text-zinc-500" />
+  </div>
+);
+
+// 4. 52 Week Range Bar
+const RangeBar = ({ low, high, current, currency }) => {
+  // Avoid division by zero
+  const percent = high - low === 0 ? 0 : ((current - low) / (high - low)) * 100;
+  const clampedPercent = Math.min(Math.max(percent, 0), 100);
+
+  return (
+    <div className="mt-2">
+      <div className="flex justify-between text-xs text-zinc-400 mb-2 font-semibold">
+        <span>52W span</span>
+        <span>{currency} {formatTZS(high)}</span>
+      </div>
+      <div className="relative h-1 w-full bg-zinc-800 rounded-full">
+        <div 
+          className="absolute h-1 bg-zinc-500 rounded-full" 
+          style={{ width: `${clampedPercent}%` }} 
+        />
+        <div 
+          className="absolute top-1/2 -translate-y-1/2 w-3 h-3 bg-white rounded-full border-2 border-[#121212]"
+          style={{ left: `${clampedPercent}%`, transform: 'translate(-50%, -50%)' }}
+        />
+      </div>
+      <div className="flex justify-between text-xs text-zinc-100 font-bold mt-2">
+        <span>{currency} {formatTZS(low)}</span>
+      </div>
+    </div>
+  );
 };
 
-const KeyMetric = ({ label, value, children }) => (
-    <div className="flex justify-between items-center py-3 border-b border-neutral-800 last:border-b-0">
-        <span className="text-neutral-400 text-sm">{label}</span>
-        <span className="font-semibold text-white text-sm">{value}</span>
-        {children}
+// 5. Analyst Rating Bar
+const RatingRow = ({ label, value, total }) => (
+  <div className="flex items-center gap-4 text-xs py-2">
+    <span className="w-8 font-semibold text-zinc-400">{label}</span>
+    <div className="flex-1 h-1.5 bg-zinc-800 rounded-full overflow-hidden">
+      <div 
+        className="h-full bg-white rounded-full" 
+        style={{ width: `${(value/total)*100}%` }} 
+      />
     </div>
-)
+    <span className="w-4 text-right font-bold text-zinc-200">{value}</span>
+  </div>
+);
+
+/* ---------------------------- MAIN PAGE ---------------------------------- */
 
 const StockPage = () => {
   const router = useRouter();
   const { symbol } = router.query;
-  const { formatAmount } = useCurrency();
-  const [timeRange, setTimeRange] = useState('1y');
+  const [timeRange, setTimeRange] = useState('1Y');
 
+  // --- API HOOKS ---
   const { data: stocks, isLoading: areStocksLoading } = useGetStocksQuery();
-  const { data: pricesData, isLoading: arePricesLoading } = useGetStockPricesQuery(
-    { symbol, time_range: timeRange, page_size: 365 },
+  const { data: pricesData } = useGetStockPricesQuery(
+    { symbol, time_range: timeRange.toLowerCase(), page_size: 365 },
     { skip: !symbol }
   );
-  const { data: metrics, isLoading: areMetricsLoading } = useGetStockMetricsQuery(symbol, { skip: !symbol });
-  const { data: dividends, isLoading: areDividendsLoading } = useGetStockDividendsQuery(symbol, { skip: !symbol });
-
-  const isLoading = areStocksLoading || (symbol && areMetricsLoading);
+  const { data: metrics } = useGetStockMetricsQuery(symbol, { skip: !symbol });
 
   const stock = useMemo(() => stocks?.find((s) => s.symbol === symbol?.toUpperCase()), [stocks, symbol]);
 
-  const week52 = useMemo(() => {
-    if (pricesData?.prices && pricesData.prices.length > 0) {
-        const highs = pricesData.prices.map(p => p.high);
-        const lows = pricesData.prices.map(p => p.low);
-        return {
-            high: Math.max(...highs),
-            low: Math.min(...lows)
-        };
-    }
-    return { high: stock?.high || 0, low: stock?.low || 0 };
-  }, [pricesData, stock]);
-  
-  if (isLoading) {
-    return <StockPageSkeleton />;
-  }
+  if (!stock && !areStocksLoading) return <div className="bg-black min-h-screen text-white p-10">Loading...</div>;
 
-  if (!stock && !areStocksLoading) {
-      return (
-        <div className="dark bg-neutral-950 text-white min-h-screen">
-            <AppNavbar />
-            <div className="p-8 text-center">Stock with symbol '{symbol?.toUpperCase()}' not found.</div>
-        </div>
-      );
-  }
-  
-  const { latest_price = 0, opening_price = 0, market_cap = 0, name, high, low, volume } = stock || {};
+  // Calculations
+  const { latest_price = 0, opening_price = 0, market_cap = 0, name, high = 0, low = 0 } = stock || {};
   const changeValue = latest_price - opening_price;
   const changePercentage = opening_price ? (changeValue / opening_price) * 100 : 0;
-  const changeIsPositive = changeValue >= 0;
-
-  const pricePosition = week52.high > week52.low ? ((latest_price - week52.low) / (week52.high - week52.low)) * 100 : 50;
+  const isPositive = changeValue >= 0;
+  const chartData = pricesData?.prices ? [...pricesData.prices].reverse() : [];
+  
+  // Currency Display
+  const CURRENCY = "TZS";
 
   return (
-    <div className="dark bg-neutral-950 text-neutral-200 min-h-screen font-sans">
-        <AppNavbar />
-        <main className="max-w-screen-2xl mx-auto p-4 md:p-8">
-            {/* --- Header --- */}
-            <header className="mb-8">
-                <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
-                    <div className="flex items-center space-x-4">
-                        <div className="w-16 h-16 bg-neutral-800 rounded-lg flex items-center justify-center font-bold text-2xl text-teal-400">{symbol?.toUpperCase()}</div>
-                        <div>
-                            <h1 className="text-4xl font-bold text-white">{name}</h1>
-                            <div className="text-md text-neutral-400">
-                                <span>Stock</span>
-                                {metrics?.isin && <span className="mx-2">&#8226;</span>}
-                                {metrics?.isin && <span>ISIN: {metrics.isin}</span>}
-                            </div>
-                        </div>
+    <div className="min-h-screen bg-black text-zinc-200 font-sans selection:bg-emerald-900 selection:text-white">
+      <Navbar />
+
+      <main className="max-w-[1400px] mx-auto px-4 lg:px-6 py-6 space-y-6">
+        
+        {/* --- Breadcrumbs --- */}
+        <div className="text-xs text-zinc-500 flex items-center gap-2">
+            <span className="hover:text-zinc-300 cursor-pointer">Markets</span>
+            <span>&gt;</span>
+            <span className="hover:text-zinc-300 cursor-pointer">Stocks</span>
+            <span>&gt;</span>
+            <span className="text-zinc-200 font-medium">{name}</span>
+        </div>
+
+        {/* --- Header Section --- */}
+        <header>
+            {/* Title Row */}
+            <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                    <div className="h-12 w-12 rounded-full bg-[#1a1a1a] flex items-center justify-center border border-zinc-800 text-xs font-bold text-zinc-400">
+                        {symbol?.substring(0,3)}
                     </div>
-                    <div className="flex items-center space-x-3">
-                        <Button variant="outline" className="bg-neutral-800 border-neutral-700 hover:bg-neutral-700"><Star className="h-5 w-5 mr-2"/> Watchlist</Button>
-                        <Button className="bg-teal-600 hover:bg-teal-700 text-white"><Plus className="h-5 w-5 mr-2"/> Add Transaction</Button>
-                    </div>
-                </div>
-                <div className="flex items-baseline space-x-3">
-                    <span className="text-5xl font-bold text-white">{formatAmount(latest_price)}</span>
-                    <div className={cn("flex items-center text-xl", changeIsPositive ? "text-green-400" : "text-red-400")}>
-                        {changeIsPositive ? <ArrowUp className="h-5 w-5" /> : <ArrowDown className="h-5 w-5" />}
-                        <span>{formatAmount(changeValue)} ({changePercentage}%)</span>
+                    <div>
+                        <h1 className="text-3xl font-bold text-white tracking-tight">{name}</h1>
                     </div>
                 </div>
-            </header>
-
-            {/* --- Main Content Grid --- */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-
-                {/* --- Left Column --- */}
-                <div className="lg:col-span-2 flex flex-col gap-8">
-                    <InfoCard>
-                        <div className="flex flex-wrap justify-between items-center mb-4 gap-2">
-                             <h3 className="text-xl font-bold text-white">Price Performance</h3>
-                             <div className="flex space-x-1 bg-neutral-800 rounded-md p-1">
-                                 {['1W', '1M', '1Y', 'YTD', 'Max'].map(range => (
-                                     <Button key={range} onClick={() => setTimeRange(range.toLowerCase())} variant={timeRange === range.toLowerCase() ? 'secondary' : 'ghost'} size="sm" className="data-[state=active]:bg-neutral-700">
-                                         {range}
-                                     </Button>
-                                 ))}
-                             </div>
-                        </div>
-                        {arePricesLoading ? <div className="h-96 flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-teal-500"/></div> : (
-                            <div className="h-96 w-full">
-                                <ResponsiveContainer width="100%" height="100%">
-                                    <ComposedChart data={pricesData?.prices.slice().reverse()} margin={{ top: 5, right: 5, left: 5, bottom: 5 }}>
-                                        <XAxis dataKey="date" tickFormatter={(val) => new Date(val).toLocaleDateString()} hide />
-                                        <YAxis yAxisId="left" orientation="left" hide domain={['dataMin * 0.98', 'dataMax * 1.02']} />
-                                        <YAxis yAxisId="right" orientation="right" hide domain={[0, 'dataMax * 5']} />
-                                        <Tooltip content={<ChartTooltip formatAmount={formatAmount}/>} cursor={{ stroke: "#6b7280", strokeWidth: 1, strokeDasharray: "3 3" }} />
-                                        <defs>
-                                            <linearGradient id="priceGradient" x1="0" y1="0" x2="0" y2="1">
-                                                <stop offset="5%" stopColor="#14b8a6" stopOpacity={0.4}/>
-                                                <stop offset="95%" stopColor="#14b8a6" stopOpacity={0}/>
-                                            </linearGradient>
-                                        </defs>
-                                        <Line yAxisId="left" type="monotone" dataKey="closing_price" stroke="#14b8a6" strokeWidth={2.5} dot={false} name="Price" />
-                                        <Bar yAxisId="right" dataKey="volume" barSize={20} fill="#0ea5e9" name="Volume" fillOpacity={0.2} />
-                                    </ComposedChart>
-                                </ResponsiveContainer>
-                            </div>
-                        )}
-                    </InfoCard>
-
-                    {dividends && dividends.length > 0 && (
-                        <InfoCard>
-                            <h3 className="text-xl font-bold mb-4 text-white">Dividend History</h3>
-                            <Table>
-                                <TableHeader>
-                                    <TableRow className="border-neutral-800">
-                                        <TableHead className="text-neutral-400">Ex-Date</TableHead>
-                                        <TableHead className="text-neutral-400">Payment Date</TableHead>
-                                        <TableHead className="text-right text-neutral-400">Amount Per Share</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {dividends.slice(0, 5).map((div, i) => (
-                                        <TableRow key={i} className="border-neutral-800">
-                                            <TableCell>{new Date(div.ex_dividend_date).toLocaleDateString()}</TableCell>
-                                            <TableCell>{new Date(div.payment_date).toLocaleDateString()}</TableCell>
-                                            <TableCell className="text-right font-semibold text-green-400">{formatAmount(div.amount_per_share)}</TableCell>
-                                        </TableRow>
-                                    ))}
-                                </TableBody>
-                            </Table>
-                        </InfoCard>
-                    )}
-                </div>
-
-                {/* --- Right Sidebar --- */}
-                <div className="lg:col-span-1 space-y-8">
-                    <InfoCard>
-                        <h3 className="text-xl font-bold text-white mb-4">Key Statistics</h3>
-                        <KeyMetric label="Market Cap" value={formatAmount(market_cap)} />
-                        <KeyMetric label="P/E Ratio" value={metrics?.pe_ratio ? metrics.pe_ratio : 'N/A'} />
-                        <KeyMetric label="EPS (TTM)" value={metrics?.eps ? formatAmount(metrics.eps) : 'N/A'} />
-                        <KeyMetric label="Dividend Yield" value={metrics?.dividend_yield ? `${(metrics.dividend_yield * 100)}%` : 'N/A'} />
-                        <KeyMetric label="Volume" value={volume ? volume.toLocaleString() : 'N/A'} />
-                        <KeyMetric label="Beta" value={metrics?.beta ? metrics.beta : 'N/A'} />
-                    </InfoCard>
-                    
-                    <InfoCard>
-                        <h3 className="text-xl font-bold text-white mb-4">Company Info</h3>
-                        {metrics?.description && <p className="text-base text-neutral-300 mb-6">{metrics.description}</p>}
-                        
-                        <div className="space-y-4 text-sm">
-                           <div className="flex items-center">
-                               <Briefcase className="w-5 h-5 mr-3 text-neutral-500"/>
-                               <span className="text-neutral-400 mr-2">Industry:</span>
-                               <span className="font-semibold text-white">{metrics?.industry || 'N/A'}</span>
-                           </div>
-                           <div className="flex items-center">
-                               <Building className="w-5 h-5 mr-3 text-neutral-500"/>
-                               <span className="text-neutral-400 mr-2">Sector:</span>
-                               <span className="font-semibold text-white">{metrics?.sector || 'N/A'}</span>
-                           </div>
-                           <div className="flex items-center">
-                               <Users className="w-5 h-5 mr-3 text-neutral-500"/>
-                               <span className="text-neutral-400 mr-2">Employees:</span>
-                               <span className="font-semibold text-white">{metrics?.employees ? metrics.employees.toLocaleString() : 'N/A'}</span>
-                           </div>
-                           {metrics?.website && (
-                               <div className="flex items-center">
-                                   <LinkIcon className="w-5 h-5 mr-3 text-neutral-500"/>
-                                   <span className="text-neutral-400 mr-2">Website:</span>
-                                   <a href={metrics.website} target="_blank" rel="noopener noreferrer" className="font-semibold text-teal-400 hover:underline">
-                                       {metrics.website}
-                                   </a>
-                               </div>
-                           )}
-                        </div>
-                    </InfoCard>
+                <div className="flex items-center gap-2">
+                    <button className="p-2 hover:bg-zinc-800 rounded-md transition-colors"><Star size={18}/></button>
+                    <button className="p-2 hover:bg-zinc-800 rounded-md transition-colors"><Bell size={18}/></button>
+                    <button className="p-2 hover:bg-zinc-800 rounded-md transition-colors"><Share size={18}/></button>
+                    <button className="flex items-center gap-2 border border-zinc-700 hover:bg-zinc-800 text-zinc-200 text-sm font-semibold px-4 py-2 rounded-md transition-colors ml-2">
+                        <Plus size={16} /> Transaction
+                    </button>
                 </div>
             </div>
-        </main>
+
+            {/* Badges Row */}
+            <div className="flex items-center gap-2 mt-3 ml-[64px]">
+                <span className="bg-[#1a1a1a] text-zinc-400 text-[11px] font-semibold px-2 py-0.5 rounded">Stock</span>
+                {metrics?.isin && (
+                    <span className="text-zinc-500 text-[11px] flex items-center gap-1">
+                        ISIN: {metrics.isin} <Copy size={10} className="cursor-pointer hover:text-zinc-300"/>
+                    </span>
+                )}
+                 <span className="text-zinc-500 text-[11px] flex items-center gap-1 border-l border-zinc-800 pl-2 ml-1">
+                        Ticker: {symbol} <Copy size={10} className="cursor-pointer hover:text-zinc-300"/>
+                </span>
+            </div>
+
+            {/* Price Row */}
+            <div className="mt-6 flex items-baseline gap-2">
+                <span className="text-zinc-400 text-sm font-bold">{CURRENCY}</span>
+                <span className="text-4xl font-bold text-white tracking-tight">{formatTZS(latest_price)}</span>
+                <span className={cn("text-lg font-medium ml-2 flex items-center gap-1", isPositive ? "text-emerald-500" : "text-red-500")}>
+                    {isPositive ? <ArrowUpRight size={20} /> : <ArrowUpRight className="rotate-90" size={20} />} 
+                    {CURRENCY} {formatTZS(Math.abs(changeValue))} ({changePercentage.toFixed(2)}%)
+                </span>
+            </div>
+
+            {/* Tabs */}
+            <div className="flex items-center gap-8 mt-8 border-b border-zinc-800">
+                <button className="text-sm font-bold text-white border-b-2 border-white pb-3">Overview</button>
+                <button className="text-sm font-medium text-zinc-400 hover:text-zinc-200 pb-3 transition-colors">Portfolio</button>
+                <button className="text-sm font-medium text-zinc-400 hover:text-zinc-200 pb-3 transition-colors">Discussion</button>
+            </div>
+        </header>
+
+        {/* --- Main Grid --- */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          
+            {/* LEFT COLUMN (2/3) */}
+            <div className="lg:col-span-2 space-y-6">
+                
+                {/* 1. Main Price Chart */}
+                <Card className="min-h-[400px] flex flex-col">
+                    <div className="flex items-center justify-between mb-6">
+                        <div>
+                           <h3 className="text-xs font-bold text-zinc-400 mb-1">Price</h3>
+                           <div className="flex items-baseline gap-1">
+                               <span className="text-xs text-zinc-500">{CURRENCY}</span>
+                               <span className="text-2xl font-bold text-white">{formatTZS(latest_price)}</span>
+                           </div>
+                           <div className={cn("text-xs font-medium flex items-center gap-1 mt-1", isPositive ? "text-emerald-500" : "text-red-500")}>
+                                <ArrowUpRight size={12} /> {CURRENCY} {formatTZS(Math.abs(changeValue))} ({changePercentage.toFixed(2)}%)
+                           </div>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                             <button className="text-xs font-bold text-zinc-300 flex items-center gap-1 hover:text-white transition-colors">
+                                <Plus size={14} /> Add benchmark
+                             </button>
+                        </div>
+                    </div>
+                    
+                    {/* Chart Area */}
+                    <div className="flex-1 relative w-full h-[300px] mb-4">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <AreaChart data={chartData}>
+                                <defs>
+                                    <linearGradient id="colorPrice" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="5%" stopColor={isPositive ? "#10b981" : "#ef4444"} stopOpacity={0.1}/>
+                                        <stop offset="95%" stopColor={isPositive ? "#10b981" : "#ef4444"} stopOpacity={0}/>
+                                    </linearGradient>
+                                </defs>
+                                <Tooltip 
+                                    contentStyle={{ backgroundColor: '#1a1a1a', borderColor: '#333', borderRadius: '4px' }}
+                                    itemStyle={{ color: '#fff', fontSize: '12px', fontWeight: 'bold' }}
+                                    labelStyle={{ color: '#888', fontSize: '11px', marginBottom: '4px' }}
+                                    formatter={(value) => [`${formatTZS(value)} ${CURRENCY}`, 'Price']}
+                                />
+                                <XAxis dataKey="date" hide />
+                                <YAxis domain={['auto', 'auto']} hide />
+                                <CartesianGrid vertical={false} horizontal={true} stroke="#222" strokeDasharray="3 3" />
+                                <Area 
+                                    type="monotone" 
+                                    dataKey="closing_price" 
+                                    stroke={isPositive ? "#10b981" : "#ef4444"} 
+                                    strokeWidth={2}
+                                    fill="url(#colorPrice)" 
+                                />
+                            </AreaChart>
+                        </ResponsiveContainer>
+
+                        {/* Time Range Selectors - Absolute positioned or flex at bottom */}
+                        <div className="flex justify-end gap-1 mt-2">
+                            {['1D', '1W', '1M', 'YTD', '1Y', 'MAX'].map(range => (
+                                <button 
+                                    key={range}
+                                    onClick={() => setTimeRange(range)}
+                                    className={cn(
+                                        "text-[11px] font-bold px-3 py-1 rounded-md transition-colors",
+                                        timeRange === range 
+                                            ? "bg-[#2a2a2a] text-white" 
+                                            : "text-zinc-500 hover:bg-[#1a1a1a] hover:text-zinc-300"
+                                    )}
+                                >
+                                    {range}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                    <div className="text-[10px] text-zinc-600 font-bold uppercase tracking-wider">
+                        Chart by <span className="text-zinc-500">getquin</span>
+                    </div>
+                </Card>
+
+                {/* 2. FAQ Section */}
+                <div>
+                    <h3 className="text-sm font-bold text-zinc-200 mb-4">Frequently asked questions</h3>
+                    <div className="bg-transparent">
+                        <FAQItem question={`What is ${name}'s market capitalization?`} />
+                        <FAQItem question={`What is ${name}'s Price-to-Earnings (P/E) ratio?`} />
+                        <FAQItem question={`What is the Earnings Per Share (EPS) for ${name}?`} />
+                        <FAQItem question={`What are the analyst ratings for ${name}?`} />
+                    </div>
+                </div>
+
+            </div>
+
+
+            {/* RIGHT COLUMN (1/3) */}
+            <div className="lg:col-span-1 space-y-4">
+                
+                {/* 1. Financials Card */}
+                <Card title="Financials">
+                    <div className="grid grid-cols-2 gap-y-6 gap-x-4">
+                        <div>
+                            <div className="text-xs text-zinc-400 font-medium mb-1">Market Cap</div>
+                            <div className="text-sm font-bold text-white">{CURRENCY} {formatTZS(market_cap, { isCompact: true })}</div>
+                        </div>
+                        <div>
+                            <div className="text-xs text-zinc-400 font-medium mb-1 flex items-center gap-1">EPS (TTM) <span className="text-zinc-600">ⓘ</span></div>
+                            <div className="text-sm font-bold text-white">{CURRENCY} {formatTZS(metrics?.eps)}</div>
+                        </div>
+                        <div>
+                            <div className="text-xs text-zinc-400 font-medium mb-1 flex items-center gap-1">Free Float <span className="text-zinc-600">ⓘ</span></div>
+                            <div className="text-sm font-bold text-white">{stock?.volume ? formatTZS(stock.volume, { isCompact: true }) : '-'}</div>
+                        </div>
+                        <div>
+                            <div className="text-xs text-zinc-400 font-medium mb-1 flex items-center gap-1">P/E ratio (TTM) <span className="text-zinc-600">ⓘ</span></div>
+                            <div className="text-sm font-bold text-white">{metrics?.pe_ratio ? Number(metrics.pe_ratio).toFixed(2) : '-'}</div>
+                        </div>
+                        <div>
+                            <div className="text-xs text-zinc-400 font-medium mb-1 flex items-center gap-1">Revenue (TTM)</div>
+                            <div className="text-sm font-bold text-white">{CURRENCY} {formatTZS(metrics?.revenue || 0, { isCompact: true })}</div>
+                        </div>
+                    </div>
+                </Card>
+
+                {/* 2. Pricing Card */}
+                <Card title="Pricing">
+                    <RangeBar 
+                        low={low || 0} 
+                        high={high || 0} 
+                        current={latest_price} 
+                        currency={CURRENCY} 
+                    />
+                    <div className="grid grid-cols-2 gap-4 mt-6 pt-4 border-t border-zinc-800">
+                        <div>
+                            <div className="text-xs text-zinc-400 font-medium mb-1">Open</div>
+                            <div className="text-sm font-bold text-white">{CURRENCY} {formatTZS(opening_price)}</div>
+                        </div>
+                        <div>
+                            <div className="text-xs text-zinc-400 font-medium mb-1">Close</div>
+                            <div className="text-sm font-bold text-white">{CURRENCY} {formatTZS(latest_price)}</div>
+                        </div>
+                    </div>
+                </Card>
+
+                {/* 3. Analyst Ratings */}
+                <Card title="Analyst Ratings">
+                    <p className="text-xs text-zinc-300 mb-6 leading-relaxed">
+                        The price target is <span className="font-bold text-white">{CURRENCY} {formatTZS(latest_price * 1.1)}</span> and the stock is covered by 1 analyst.
+                    </p>
+                    <div className="space-y-1">
+                        <RatingRow label="Buy" value={0} total={1} />
+                        <RatingRow label="Hold" value={1} total={1} />
+                        <RatingRow label="Sell" value={0} total={1} />
+                    </div>
+                </Card>
+
+            </div>
+
+        </div>
+      </main>
     </div>
   );
 };

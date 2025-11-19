@@ -1,307 +1,421 @@
-// App.jsx
-import React, { useState, useEffect, useRef, useCallback, memo } from "react";
-import { motion, useAnimate, stagger, useScroll, useTransform } from "motion/react";
+import React, { useState, useEffect, useRef, memo } from "react";
+import { motion, useScroll, useTransform } from "framer-motion";
 import {
   ArrowRight,
-  BarChartHorizontal,
-  CalendarClock,
-  ShieldCheck,
-  Wallet,
+  BarChart2,
+  PieChart,
+  Shield,
+  Smartphone,
+  Menu,
+  X,
+  ChevronRight,
+  Globe,
+  Lock
 } from "lucide-react";
 
 /* -------------------------------- UTILS ---------------------------------- */
 const cn = (...c) => c.filter(Boolean).join(" ");
 
-/* ---------------------------- INTERSECTION HOOK -------------------------- */
-const useIntersection = (ref, options, cb) => {
-  useEffect(() => {
-    const obs = new IntersectionObserver(([e]) => e.isIntersecting && cb(), options);
-    const el = ref.current;
-    if (el) obs.observe(el);
-    return () => el && obs.unobserve(el);
-  }, [ref, options, cb]);
-};
+/* ---------------------------- COMPONENTS --------------------------------- */
 
-/* ---------------------------- GLOWING EFFECT ----------------------------- */
-const GlowingEffect = memo(
-  ({ disabled = false, glow = true, className }) => {
-    const ref = useRef();
-    const last = useRef({ x: 0, y: 0 });
-    const raf = useRef();
+// 1. Navigation Bar
+const Navbar = ({ isScrolled }) => {
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-    const onMove = useCallback((e) => {
-      if (!ref.current) return;
-      if (raf.current) cancelAnimationFrame(raf.current);
-      raf.current = requestAnimationFrame(() => {
-        const b = ref.current.getBoundingClientRect();
-        const x = e?.clientX ?? last.current.x;
-        const y = e?.clientY ?? last.current.y;
-        last.current = { x, y };
-        const ang =
-          Math.atan2(y - (b.top + b.height / 2), x - (b.left + b.width / 2)) *
-            (180 / Math.PI) +
-          90;
-        ref.current.style.setProperty("--start", `${ang}deg`);
-        ref.current.style.setProperty(
-          "--active",
-          b.left - 64 < x && x < b.right + 64 && b.top - 64 < y && y < b.bottom + 64
-            ? "1"
-            : "0"
-        );
-      });
-    }, []);
-
-    useEffect(() => {
-      if (disabled) return;
-      window.addEventListener("pointermove", onMove, { passive: true });
-      return () => window.removeEventListener("pointermove", onMove);
-    }, [onMove, disabled]);
-
-    return (
-      <div
-        ref={ref}
-        style={{
-          "--start": "0deg",
-          "--active": "0",
-          "--glow": "conic-gradient(from var(--start), #6366f1, #ec4899, #f59e0b, #10b981, #6366f1)",
-        }}
-        className={cn(
-          "pointer-events-none absolute -inset-px rounded-[inherit] opacity-0 transition-opacity duration-500",
-          glow && "opacity-100",
-          className
-        )}
-      >
-        <div
-          className="absolute inset-0 rounded-[inherit] [mask:conic-gradient(from_calc(var(--start)-20deg),transparent_0deg,#fff_40deg,transparent_80deg)] opacity-[var(--active)]"
-          style={{ background: "var(--glow)" }}
-        />
-      </div>
-    );
-  }
-);
-GlowingEffect.displayName = "GlowingEffect";
-
-/* ---------------------------- GLASS CARD --------------------------------- */
-const GlassCard = ({ icon, title, desc }) => (
-  <motion.li
-    className="min-h-[14rem] list-none"
-    whileHover={{ scale: 1.02, y: -4 }}
-    transition={{ type: "spring", stiffness: 300 }}
-  >
-    <div className="relative h-full rounded-2xl border border-neutral-700/30 p-1">
-      <GlowingEffect />
-      <div className="relative flex h-full flex-col justify-between gap-6 rounded-xl bg-neutral-950/60 p-6 backdrop-blur-sm">
-        <div className="w-fit rounded-lg border border-neutral-700 bg-neutral-900/80 p-2">
-          {icon}
-        </div>
-        <div>
-          <h3 className="font-display text-xl font-semibold text-white">{title}</h3>
-          <p className="mt-2 text-sm text-neutral-400">{desc}</p>
-        </div>
-      </div>
-    </div>
-  </motion.li>
-);
-
-/* ---------------------------- TYPEWRITER --------------------------------- */
-const Typewriter = ({ text }) => {
-  const [out, setOut] = useState("");
-  useEffect(() => {
-    let i = 0;
-    const t = setInterval(() => {
-      setOut(text.slice(0, ++i));
-      if (i === text.length) clearInterval(t);
-    }, 30);
-    return () => clearInterval(t);
-  }, [text]);
-  return <>{out}</>;
-};
-
-/* ---------------------------- BACKGROUND LINES --------------------------- */
-const Lines = () => {
-  const { scrollYProgress } = useScroll();
-  const blur = useTransform(scrollYProgress, [0, 1], [0, 4]);
-  const paths = [
-    "M720 450C720 450 742.459 440.315 755.249 425.626C768.039 410.937 778.88 418.741 789.478 401.499C800.076 384.258 817.06 389.269 826.741 380.436C836.423 371.603 851.957 364.826 863.182 356.242C874.408 347.657 877.993 342.678 898.867 333.214C919.741 323.75 923.618 319.88 934.875 310.177C946.133 300.474 960.784 300.837 970.584 287.701C980.384 274.564 993.538 273.334 1004.85 263.087C1016.15 252.84 1026.42 250.801 1038.22 242.1C1050.02 233.399 1065.19 230.418 1074.63 215.721C1084.07 201.024 1085.49 209.128 1112.65 194.884C1139.8 180.64 1132.49 178.205 1146.43 170.636C1160.37 163.066 1168.97 158.613 1181.46 147.982C1193.95 137.35 1191.16 131.382 1217.55 125.645C1243.93 119.907 1234.19 118.899 1254.53 100.846C1274.86 82.7922 1275.12 92.8914 1290.37 76.09C1305.62 59.2886 1313.91 62.1868 1323.19 56.7536C1332.48 51.3204 1347.93 42.8082 1361.95 32.1468C1375.96 21.4855 1374.06 25.168 1397.08 10.1863C1420.09 -4.79534 1421.41 -3.16992 1431.52 -15.0078",
-  ];
-  const colors = ["#6366f1", "#ec4899", "#f59e0b", "#10b981", "#3b82f6"];
   return (
-    <motion.svg
-      viewBox="0 0 1440 900"
-      className="absolute inset-0 -z-10 w-full h-full"
-      style={{ filter: `blur(${blur}px)` }}
+    <nav
+      className={cn(
+        "fixed top-0 left-0 right-0 z-50 transition-all duration-300 border-b",
+        isScrolled
+          ? "bg-[#080808]/80 backdrop-blur-md border-white/10 py-4"
+          : "bg-transparent border-transparent py-6"
+      )}
     >
-      {paths.map((d, i) => (
-        <motion.path
-          key={i}
-          d={d}
-          stroke={colors[i % colors.length]}
-          strokeWidth="2"
-          strokeLinecap="round"
-          initial={{ pathLength: 0, opacity: 0 }}
-          animate={{ pathLength: 1, opacity: 0.5 }}
-          transition={{
-            duration: 10,
-            ease: "linear",
-            repeat: Infinity,
-            repeatType: "loop",
-            delay: i * 2,
-          }}
-        />
-      ))}
-    </motion.svg>
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between">
+        {/* Logo */}
+        <div className="flex items-center gap-2">
+          <div className="w-8 h-8 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center">
+            <PieChart className="text-white h-5 w-5" />
+          </div>
+          <span className="font-display text-xl font-bold text-white tracking-tight">
+            uwekezaji
+          </span>
+        </div>
+
+        {/* Desktop Nav */}
+        <div className="hidden md:flex items-center gap-8">
+          <a href="#features" className="text-sm font-medium text-gray-300 hover:text-white transition-colors">Features</a>
+          <a href="#security" className="text-sm font-medium text-gray-300 hover:text-white transition-colors">Security</a>
+          <a href="#pricing" className="text-sm font-medium text-gray-300 hover:text-white transition-colors">Pricing</a>
+        </div>
+
+        {/* Auth Buttons */}
+        <div className="hidden md:flex items-center gap-4">
+          <button 
+            onClick={() => window.location.href = '/login'}
+            className="text-sm font-medium text-white hover:text-indigo-300 transition-colors"
+          >
+            Login
+          </button>
+          <button className="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2 rounded-full text-sm font-medium transition-all hover:shadow-[0_0_20px_-5px_rgba(99,102,241,0.5)]">
+            Sign Up
+          </button>
+        </div>
+
+        {/* Mobile Menu Toggle */}
+        <button
+          className="md:hidden text-white"
+          onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+        >
+          {isMobileMenuOpen ? <X /> : <Menu />}
+        </button>
+      </div>
+
+      {/* Mobile Menu */}
+      {isMobileMenuOpen && (
+        <div className="absolute top-full left-0 w-full bg-[#080808] border-b border-white/10 p-4 flex flex-col gap-4 md:hidden">
+          <a href="#features" className="text-gray-300 hover:text-white">Features</a>
+          <a href="#security" className="text-gray-300 hover:text-white">Security</a>
+          <button 
+            onClick={() => window.location.href = '/login'}
+            className="text-left text-white font-medium"
+          >
+            Login
+          </button>
+          <button className="bg-indigo-600 text-white py-2 rounded-lg w-full">Sign Up</button>
+        </div>
+      )}
+    </nav>
   );
 };
 
-/* ---------------------------- CONTENT DATA ------------------------------- */
-const data = {
-  hero: {
-    title: "The premier platform for the discerning investor.",
-    body: "Uwekezaji provides a sophisticated, unified view of your entire financial portfolio. Track stocks, bonds, and unit trusts with powerful, design-forward tools that bring clarity to complexity.",
-  },
-  features: {
-    title: "Your Assets, Under a Singular, Elegant Lens.",
-    body: "Every tool you need for a comprehensive financial overview. We've obsessed over the details so you don't have to.",
-  },
-  testimonial: {
-    quote:
-      "For the first time, I feel completely in control of my financial picture. It’s not just a tool; it’s a partner.",
-    name: "Jane Doe",
-    role: "Founder & CEO, Tech Innovations",
-  },
-  cta: {
-    title: "Take Control of Your Financial Future.",
-    body: "Join a new generation of investors who value design, clarity, and control. Start for free and import your portfolio in minutes.",
-  },
+// 2. Aurora Background Effect
+const AuroraBackground = memo(() => (
+  <div className="fixed inset-0 -z-10 overflow-hidden pointer-events-none bg-[#080808]">
+    <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] rounded-full bg-indigo-600/20 blur-[120px]" />
+    <div className="absolute top-[20%] right-[-10%] w-[30%] h-[50%] rounded-full bg-purple-600/20 blur-[120px]" />
+    <div className="absolute bottom-[-10%] left-[20%] w-[50%] h-[40%] rounded-full bg-blue-600/10 blur-[120px]" />
+    {/* Grid Overlay */}
+    <div 
+      className="absolute inset-0 opacity-[0.03]" 
+      style={{
+        backgroundImage: "linear-gradient(to right, #ffffff 1px, transparent 1px), linear-gradient(to bottom, #ffffff 1px, transparent 1px)",
+        backgroundSize: "40px 40px"
+      }} 
+    />
+  </div>
+));
+
+// 3. Feature Section (Alternating Layout)
+const FeatureSection = ({ title, description, icon, imagePosition = "right", tags = [] }) => {
+  return (
+    <section className="py-20 lg:py-32 relative">
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+        <div className={`flex flex-col lg:flex-row items-center gap-12 lg:gap-24 ${imagePosition === 'left' ? 'lg:flex-row-reverse' : ''}`}>
+          
+          {/* Text Content */}
+          <div className="flex-1 space-y-6">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 w-fit">
+              {icon}
+              <span className="text-sm font-medium text-indigo-300">{tags[0]}</span>
+            </div>
+            
+            <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-white leading-[1.1]">
+              {title}
+            </h2>
+            
+            <p className="text-lg text-gray-400 leading-relaxed">
+              {description}
+            </p>
+
+            <button className="group flex items-center gap-2 text-white font-medium hover:text-indigo-400 transition-colors">
+              Start now <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+            </button>
+          </div>
+
+          {/* Visual/Image Placeholder */}
+          <div className="flex-1 w-full">
+            <div className="relative aspect-[4/3] rounded-2xl overflow-hidden border border-white/10 bg-gradient-to-br from-white/5 to-transparent p-8 backdrop-blur-sm">
+              {/* Abstract UI Mockup using CSS shapes */}
+              <div className="absolute inset-0 bg-indigo-500/10 blur-[80px]" />
+              <div className="relative h-full w-full bg-[#0f0f16] rounded-xl border border-white/5 shadow-2xl p-6 flex flex-col gap-4">
+                {/* Mock Header */}
+                <div className="flex items-center justify-between mb-4">
+                  <div className="h-2 w-24 bg-white/20 rounded-full" />
+                  <div className="h-6 w-6 rounded-full bg-white/10" />
+                </div>
+                {/* Mock Chart Area */}
+                <div className="flex-1 flex items-end justify-between gap-2 px-2 pb-2">
+                   {[40, 65, 45, 80, 55, 90, 70].map((h, i) => (
+                     <motion.div 
+                        key={i}
+                        initial={{ height: 0 }}
+                        whileInView={{ height: `${h}%` }}
+                        transition={{ duration: 1, delay: i * 0.1 }}
+                        className="w-full bg-gradient-to-t from-indigo-600/50 to-purple-500/50 rounded-t-sm"
+                     />
+                   ))}
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </section>
+  );
 };
-const cards = [
-  {
-    icon: <Wallet className="h-5 w-5 text-neutral-400" />,
-    title: "Unified Dashboard",
-    desc: "Monitor your net worth and allocation in one intuitive view.",
-  },
-  {
-    icon: <BarChartHorizontal className="h-5 w-5 text-neutral-400" />,
-    title: "In-Depth Analytics",
-    desc: "Advanced charts, historical data, and dividend tracking.",
-  },
-  {
-    icon: <CalendarClock className="h-5 w-5 text-neutral-400" />,
-    title: "Event Tracking",
-    desc: "Never miss a dividend, bond maturity, or key date.",
-  },
-  {
-    icon: <ShieldCheck className="h-5 w-5 text-neutral-400" />,
-    title: "Bank-Grade Security",
-    desc: "End-to-end encryption and zero-knowledge architecture.",
-  },
-];
+
+// 4. Testimonial Card (Glass)
+const TestimonialCard = ({ quote, author, role }) => (
+  <div className="min-w-[300px] md:min-w-[400px] p-8 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-md">
+    <div className="flex gap-1 mb-4">
+      {[...Array(5)].map((_, i) => (
+        <svg key={i} className="w-4 h-4 text-yellow-500 fill-current" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" /></svg>
+      ))}
+    </div>
+    <p className="text-lg text-gray-200 mb-6 font-light leading-relaxed">"{quote}"</p>
+    <div className="flex items-center gap-3">
+      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-gray-700 to-gray-600" />
+      <div>
+        <div className="text-sm font-bold text-white">{author}</div>
+        <div className="text-xs text-gray-400">{role}</div>
+      </div>
+    </div>
+  </div>
+);
 
 /* ---------------------------- MAIN APP ----------------------------------- */
 export default function App() {
-  const [section, setSection] = useState("hero");
-  const refs = { hero: useRef(), features: useRef(), testimonial: useRef(), cta: useRef() };
-  const opts = { threshold: 0.4 };
-  useIntersection(refs.hero, opts, () => setSection("hero"));
-  useIntersection(refs.features, opts, () => setSection("features"));
-  useIntersection(refs.testimonial, opts, () => setSection("testimonial"));
-  useIntersection(refs.cta, opts, () => setSection("cta"));
+  const [scrolled, setScrolled] = useState(false);
+  const { scrollY } = useScroll();
+  
+  useEffect(() => {
+    const handleScroll = () => setScrolled(window.scrollY > 50);
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  const heroOpacity = useTransform(scrollY, [0, 500], [1, 0]);
+  const heroScale = useTransform(scrollY, [0, 500], [1, 0.95]);
 
   return (
-    <motion.div
-      className="relative min-h-screen bg-neutral-950 text-neutral-100 font-sans"
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.8 }}
-    >
-      <Lines />
-      <div
-        className="absolute inset-0"
-        style={{
-          backgroundImage:
-            "radial-gradient(circle at 1px 1px, rgba(255,255,255,.06) 1px,transparent 0)",
-          backgroundSize: "20px 20px",
-        }}
-      />
-      <div className="container mx-auto grid grid-cols-12 gap-8 px-4 lg:px-8">
-        {/* -------- SIDEBAR -------- */}
-        <aside className="sticky top-24 col-span-12 flex h-[calc(100vh-6rem)] flex-col justify-between py-24 lg:col-span-5">
-          <div>
-            <h1 className="font-display text-3xl font-bold">uwekezaji</h1>
-            <div className="mt-12 h-48">
-              <h2 className="font-serif text-4xl leading-tight md:text-5xl">
-                <Typewriter key={section} text={data[section].title} />
-              </h2>
-            </div>
-            <nav className="mt-10 flex flex-col space-y-2">
-              {["hero", "features", "testimonial", "cta"].map((k) => (
-                <button
-                  key={k}
-                  onClick={() =>
-                    refs[k].current.scrollIntoView({ behavior: "smooth" })
-                  }
-                  className={cn(
-                    "h-2 w-2 rounded-full transition-all",
-                    section === k ? "bg-white w-8" : "bg-neutral-600"
-                  )}
-                />
-              ))}
-            </nav>
+    <div className="relative min-h-screen bg-[#080808] text-white font-sans selection:bg-indigo-500/30">
+      <AuroraBackground />
+      <Navbar isScrolled={scrolled} />
+
+      {/* HERO SECTION */}
+      <motion.header 
+        className="relative pt-32 pb-20 lg:pt-48 lg:pb-32 px-4 sm:px-6 lg:px-8 container mx-auto text-center"
+        style={{ opacity: heroOpacity, scale: heroScale }}
+      >
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8 }}
+          className="max-w-4xl mx-auto space-y-8"
+        >
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 border border-white/10 backdrop-blur-sm">
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+            </span>
+            <span className="text-sm font-medium text-gray-300">Now available on iOS and Android</span>
           </div>
-          <div>
-            <p className="text-neutral-400">{data[section].body}</p>
-            <p className="mt-12 text-xs text-neutral-600">
-              © {new Date().getFullYear()} Uwekezaji Inc.
-            </p>
+
+          <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold tracking-tight text-transparent bg-clip-text bg-gradient-to-b from-white to-white/60 leading-[1.1]">
+            Your entire wealth. <br />
+            One platform.
+          </h1>
+
+          <p className="text-xl text-gray-400 max-w-2xl mx-auto leading-relaxed">
+            Track your net worth, plan for retirement, and optimize your wealth with powerful analytics—all in one platform.
+          </p>
+
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
+            <button className="w-full sm:w-auto bg-white text-black px-8 py-4 rounded-full font-bold hover:bg-gray-100 transition-all flex items-center justify-center gap-2">
+              Start Free <ArrowRight className="w-5 h-5" />
+            </button>
+            <button className="w-full sm:w-auto px-8 py-4 rounded-full font-bold text-white border border-white/20 hover:bg-white/5 transition-all">
+              View Demo
+            </button>
           </div>
-        </aside>
+        </motion.div>
 
-        {/* -------- MAIN -------- */}
-        <main className="col-span-12 flex flex-col gap-48 py-24 lg:col-span-7">
-          <div ref={refs.hero} className="h-32" />
-          <section id="features" ref={refs.features}>
-            <ul className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:gap-6">
-              {cards.map((c, i) => (
-                <GlassCard key={i} {...c} />
-              ))}
-            </ul>
-          </section>
+        {/* Abstract Hero Graphic */}
+        <motion.div 
+          initial={{ opacity: 0, y: 40 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 1, delay: 0.2 }}
+          className="mt-20 relative max-w-5xl mx-auto"
+        >
+          <div className="aspect-[16/9] bg-[#0f0f16] rounded-t-3xl border-t border-x border-white/10 shadow-2xl overflow-hidden relative">
+             {/* Gradient overlay at bottom to blend */}
+             <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-[#080808] to-transparent z-10" />
+             
+             {/* Mock Content Inside Hero */}
+             <div className="p-8 grid grid-cols-3 gap-8 opacity-50">
+                <div className="col-span-2 h-64 bg-white/5 rounded-xl animate-pulse" />
+                <div className="col-span-1 h-64 bg-white/5 rounded-xl animate-pulse" />
+                <div className="col-span-1 h-40 bg-white/5 rounded-xl" />
+                <div className="col-span-2 h-40 bg-white/5 rounded-xl" />
+             </div>
+          </div>
+        </motion.div>
+      </motion.header>
 
-          <section id="testimonial" ref={refs.testimonial} className="flex items-start gap-5">
-            <img
-              src="https://i.imgur.com/qZcuEyaKrTY7QOZn3jdicg30P4.jpeg"
-              alt="Jane"
-              className="h-16 w-16 rounded-full object-cover"
-            />
-            <div>
-              <p className="font-serif text-2xl italic">
-                “<Typewriter text={data.testimonial.quote} />”
-              </p>
-              <p className="mt-3 font-semibold">{data.testimonial.name}</p>
-              <p className="text-sm text-neutral-500">{data.testimonial.role}</p>
-            </div>
-          </section>
-
-          <section
-            id="cta"
-            ref={refs.cta}
-            className="relative overflow-hidden rounded-2xl border border-neutral-700/30 bg-neutral-900/30 p-10 text-center backdrop-blur-sm"
-          >
-            <h2 className="font-display text-3xl md:text-4xl">{data.cta.title}</h2>
-            <p className="mx-auto mt-3 max-w-md text-neutral-400">{data.cta.body}</p>
-            <div className="mt-8 flex justify-center gap-4">
-              <button className="rounded-md bg-white px-6 py-3 text-sm font-semibold text-black hover:bg-neutral-200">
-                Start Free <ArrowRight className="inline h-4 w-4" />
-              </button>
-              <button className="rounded-md border border-neutral-600 px-6 py-3 text-sm text-neutral-300 hover:bg-neutral-800">
-                Watch Demo
-              </button>
-            </div>
-          </section>
-
-          <div className="h-48" />
-        </main>
+      {/* SOCIAL PROOF */}
+      <div className="py-10 border-y border-white/5 bg-white/[0.02]">
+        <div className="container mx-auto px-4">
+          <p className="text-center text-sm text-gray-500 mb-8">TRUSTED BY INVESTORS FROM</p>
+          <div className="flex flex-wrap justify-center gap-12 lg:gap-20 opacity-40 grayscale hover:grayscale-0 transition-all duration-500">
+             {/* Placeholder Logos using text/icons for demo */}
+             {['Goldman', 'Morgan', 'Schwab', 'Fidelity', 'Vanguard'].map((name) => (
+               <div key={name} className="flex items-center gap-2 text-xl font-bold font-display">
+                 <Globe className="w-6 h-6" /> {name}
+               </div>
+             ))}
+          </div>
+        </div>
       </div>
-    </motion.div>
+
+      {/* FEATURES SECTIONS */}
+      <div id="features">
+        <FeatureSection 
+          title="See your complete financial picture"
+          description="Easily connect all your financial accounts—from brokerage platforms to bank accounts—via secure API integration with thousands of providers."
+          icon={<Smartphone className="w-5 h-5 text-indigo-400" />}
+          tags={["Easy Import"]}
+          imagePosition="right"
+        />
+
+        <FeatureSection 
+          title="Unlock deep portfolio insights"
+          description="Unlock advanced investment analytics—asset allocation, historical performance, and AI-powered risk ratings. Know exactly how your portfolio is performing."
+          icon={<BarChart2 className="w-5 h-5 text-purple-400" />}
+          tags={["Advanced Analytics"]}
+          imagePosition="left"
+        />
+
+        <FeatureSection 
+          title="Maximum protection for your data"
+          description="We only collect the information we absolutely need. With state-of-the-art encryption, no one can access your data – not even us."
+          icon={<Shield className="w-5 h-5 text-green-400" />}
+          tags={["Bank-Grade Security"]}
+          imagePosition="right"
+        />
+      </div>
+
+      {/* TESTIMONIALS */}
+      <section className="py-24 overflow-hidden relative">
+        <div className="container mx-auto px-4 text-center mb-16">
+          <h2 className="text-3xl md:text-5xl font-bold mb-6">What users love about Uwekezaji</h2>
+          <div className="flex items-center justify-center gap-2 text-yellow-500">
+             {[1,2,3,4,5].map(i => <svg key={i} className="w-6 h-6 fill-current" viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>)}
+             <span className="text-white font-bold ml-2 text-lg">4.9/5 Rating</span>
+          </div>
+        </div>
+
+        {/* Marquee Effect (Simulated) */}
+        <div className="flex gap-6 animate-[scroll_40s_linear_infinite] w-max px-4">
+           {[...Array(2)].map((_, idx) => (
+             <React.Fragment key={idx}>
+                <TestimonialCard 
+                  quote="For the first time, I feel completely in control of my financial picture. It's not just a tool; it's a partner."
+                  author="Jane Doe"
+                  role="Tech Founder"
+                />
+                <TestimonialCard 
+                  quote="The analytics are mind-blowing. I can finally see my true exposure across different sectors."
+                  author="Marcus R."
+                  role="Investment Banker"
+                />
+                <TestimonialCard 
+                  quote="Beautiful UI, secure, and incredibly fast. Best portfolio tracker on the market."
+                  author="Sarah L."
+                  role="Crypto Investor"
+                />
+                 <TestimonialCard 
+                  quote="I love the dividend tracking feature. It helps me plan my monthly cashflow perfectly."
+                  author="David K."
+                  role="Real Estate Mogul"
+                />
+             </React.Fragment>
+           ))}
+        </div>
+      </section>
+
+      {/* CTA / FOOTER */}
+      <footer className="border-t border-white/10 bg-[#0f0f16] pt-20 pb-10">
+        <div className="container mx-auto px-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-8 mb-20">
+            <div className="col-span-2 lg:col-span-2">
+              <div className="flex items-center gap-2 mb-6">
+                <PieChart className="text-indigo-500 h-6 w-6" />
+                <span className="font-display text-xl font-bold text-white">uwekezaji</span>
+              </div>
+              <p className="text-gray-400 mb-6 max-w-sm">
+                The premier platform for the discerning investor. Track stocks, bonds, and crypto in one unified view.
+              </p>
+              <div className="flex gap-4">
+                 {/* Social Icons */}
+                 <div className="w-8 h-8 rounded bg-white/10 hover:bg-white/20 transition-colors" />
+                 <div className="w-8 h-8 rounded bg-white/10 hover:bg-white/20 transition-colors" />
+                 <div className="w-8 h-8 rounded bg-white/10 hover:bg-white/20 transition-colors" />
+              </div>
+            </div>
+            
+            <div>
+              <h4 className="font-bold mb-6">Product</h4>
+              <ul className="space-y-4 text-gray-400 text-sm">
+                <li><a href="#" className="hover:text-white transition-colors">Features</a></li>
+                <li><a href="#" className="hover:text-white transition-colors">Pricing</a></li>
+                <li><a href="#" className="hover:text-white transition-colors">Mobile App</a></li>
+                <li><a href="#" className="hover:text-white transition-colors">Security</a></li>
+              </ul>
+            </div>
+            
+            <div>
+              <h4 className="font-bold mb-6">Company</h4>
+              <ul className="space-y-4 text-gray-400 text-sm">
+                <li><a href="#" className="hover:text-white transition-colors">About Us</a></li>
+                <li><a href="#" className="hover:text-white transition-colors">Careers</a></li>
+                <li><a href="#" className="hover:text-white transition-colors">Blog</a></li>
+                <li><a href="#" className="hover:text-white transition-colors">Press</a></li>
+              </ul>
+            </div>
+
+            <div className="col-span-2">
+               <h4 className="font-bold mb-6">Download App</h4>
+               <div className="flex flex-col gap-3">
+                 <button className="flex items-center gap-3 bg-white/5 border border-white/10 rounded-xl p-3 hover:bg-white/10 transition-all text-left">
+                    <div className="w-8 h-8 bg-white/10 rounded-full flex items-center justify-center"><Smartphone size={16} /></div>
+                    <div>
+                       <div className="text-xs text-gray-400">Download on the</div>
+                       <div className="text-sm font-bold">App Store</div>
+                    </div>
+                 </button>
+                 <button className="flex items-center gap-3 bg-white/5 border border-white/10 rounded-xl p-3 hover:bg-white/10 transition-all text-left">
+                    <div className="w-8 h-8 bg-white/10 rounded-full flex items-center justify-center"><Lock size={16} /></div>
+                    <div>
+                       <div className="text-xs text-gray-400">Get it on</div>
+                       <div className="text-sm font-bold">Google Play</div>
+                    </div>
+                 </button>
+               </div>
+            </div>
+          </div>
+
+          <div className="border-t border-white/5 pt-8 flex flex-col md:flex-row justify-between items-center gap-4 text-xs text-gray-500">
+            <p>© {new Date().getFullYear()} Uwekezaji Inc. All rights reserved.</p>
+            <div className="flex gap-6">
+              <a href="#" className="hover:text-white">Privacy Policy</a>
+              <a href="#" className="hover:text-white">Terms of Service</a>
+              <a href="#" className="hover:text-white">Cookies</a>
+            </div>
+          </div>
+        </div>
+      </footer>
+    </div>
   );
 }
