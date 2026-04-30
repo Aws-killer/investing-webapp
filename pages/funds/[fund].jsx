@@ -21,10 +21,7 @@ import {
 } from "lucide-react";
 
 import { FinancialChart } from "@/components/ui/FinancialChart";
-import {
-  useGetFundPricesQuery,
-  useGetFundsInfoQuery,
-} from "@/features/api/fundsApi";
+import { useGetFundPricesQuery } from "@/features/api/fundsApi";
 
 /* ================================ CONSTANTS ============================== */
 const PERIODS = ["1M", "3M", "6M", "1Y", "3Y", "Max"];
@@ -418,25 +415,13 @@ const FundPage = () => {
   );
 
   /* ── API: full history for accurate performance metrics ── */
-  const { data: fullFund, isFetching: isFullFetching } = useGetFundPricesQuery(
+  const { data: fullFund } = useGetFundPricesQuery(
     { identifier, period: "Max", page: 1, limit: 500 },
     { skip: !identifier },
   );
 
-  const { data: allFundInfos = [] } = useGetFundsInfoQuery(undefined, {
-    skip: !identifier,
-  });
-
-  const info = useMemo(() => {
-    if (fund?.info) return fund.info;
-    if (!fund?.name || !allFundInfos?.length) return null;
-    const fundName = fund.name?.toString().trim().toLowerCase();
-    return (
-      allFundInfos.find(
-        (item) => item.name?.toString().trim().toLowerCase() === fundName,
-      ) || null
-    );
-  }, [fund, allFundInfos]);
+  // Backend embeds fund_data.json info directly on the fund response
+  const info = fund?.info ?? null;
 
   /* ── CHART DATA (sorted ascending, for selected period) ── */
   const chartData = useMemo(() => {
