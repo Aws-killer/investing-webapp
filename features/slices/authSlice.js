@@ -1,23 +1,15 @@
 import { createSlice } from "@reduxjs/toolkit";
 
+const BLANK_STATE = { user: null, token: null, isAuthenticated: false };
+
 // Load initial state from localStorage or use default values
 const loadState = () => {
+  if (typeof window === "undefined") return BLANK_STATE;
   try {
     const serializedState = localStorage.getItem("authState");
-    if (serializedState === null) {
-      return {
-        user: null,
-        token: null,
-        isAuthenticated: false,
-      };
-    }
-    return JSON.parse(serializedState);
-  } catch (err) {
-    return {
-      user: null,
-      token: null,
-      isAuthenticated: false,
-    };
+    return serializedState ? JSON.parse(serializedState) : BLANK_STATE;
+  } catch {
+    return BLANK_STATE;
   }
 };
 
@@ -31,15 +23,17 @@ const authSlice = createSlice({
       state.user = user;
       state.token = token;
       state.isAuthenticated = true;
-      // Save to localStorage
-      localStorage.setItem("authState", JSON.stringify(state));
+      if (typeof window !== "undefined") {
+        localStorage.setItem("authState", JSON.stringify({ user, token, isAuthenticated: true }));
+      }
     },
     logout: (state) => {
       state.user = null;
       state.token = null;
       state.isAuthenticated = false;
-      // Clear localStorage
-      localStorage.removeItem("authState");
+      if (typeof window !== "undefined") {
+        localStorage.removeItem("authState");
+      }
     },
   },
 });

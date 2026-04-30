@@ -24,9 +24,9 @@ export const stocksApi = createApi({
       },
     }),
     getStockPrices: builder.query({
-      query: ({ symbol, time_range = "max", page = 1, page_size = 100 }) => ({
+      query: ({ symbol, time_range = "max", page = 1, limit = 100 }) => ({
         url: `/stocks/${symbol}/prices`,
-        params: { time_range, page, page_size },
+        params: { time_range, page, limit },
       }),
       providesTags: (result, error, { symbol }) => [
         { type: "StockPrice", id: symbol },
@@ -66,6 +66,15 @@ export const stocksApi = createApi({
         return [];
       },
     }),
+    getStockPriceByDate: builder.query({
+      query: ({ symbol, date }) => `/stocks/${symbol}/price/${date}`,
+      transformResponse: (response) => {
+        if (response.success && response.data) {
+          return response.data;
+        }
+        return null;
+      },
+    }),
   }),
 });
 
@@ -75,4 +84,5 @@ export const {
   useGetStockPricesQuery,
   useGetStockMetricsQuery,
   useGetStockDividendsQuery,
+  useGetStockPriceByDateQuery,
 } = stocksApi;

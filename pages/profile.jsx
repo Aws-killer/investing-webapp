@@ -1,130 +1,76 @@
-// pages/profile.jsx
 "use client";
 
 import React, { useState, useEffect } from "react";
 import { useSelector } from "react-redux";
 import { selectCurrentUser } from "@/features/slices/authSlice";
-import { useCurrency } from "@/Providers/CurrencyProvider";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { useCurrency } from "@/features/context/currency-context";
 import { toast } from "sonner";
 
-const ProfilePage = () => {
+const Label = ({ children }) => (
+  <label className="block text-[9px] font-bold uppercase tracking-[0.15em] text-muted-foreground mb-1.5">{children}</label>
+);
+const ReadInput = ({ value }) => (
+  <div className="h-11 bg-muted rounded-[6px] px-3.5 flex items-center text-[13px] font-medium text-muted-foreground">{value}</div>
+);
+const Card = ({ title, description, children }) => (
+  <div className="bg-card rounded-[12px] p-6 card-shadow">
+    <h2 className="text-[15px] font-extrabold tracking-[-0.03em] text-foreground">{title}</h2>
+    {description && <p className="text-[13px] text-muted-foreground font-medium mt-1 leading-relaxed">{description}</p>}
+    <div className="mt-6">{children}</div>
+  </div>
+);
+
+export default function ProfilePage() {
   const user = useSelector(selectCurrentUser);
-  const {
-    currency,
-    setCurrency,
-    currencySymbol,
-    setCurrencySymbol,
-  } = useCurrency();
-
-  // Local state for form fields
+  const { currency, setCurrency, currencySymbol, setCurrencySymbol } = useCurrency();
   const [localCurrency, setLocalCurrency] = useState(currency);
-  const [localCurrencySymbol, setLocalCurrencySymbol] = useState(currencySymbol);
-  
-  useEffect(() => {
-    // Sync local state if context changes
-    setLocalCurrency(currency);
-    setLocalCurrencySymbol(currencySymbol);
-  }, [currency, currencySymbol]);
+  const [localSymbol, setLocalSymbol] = useState(currencySymbol);
 
-  const handleSaveChanges = () => {
-    setCurrency(localCurrency);
-    setCurrencySymbol(localCurrencySymbol);
-    toast.success("Settings saved successfully!");
-  };
+  useEffect(() => { setLocalCurrency(currency); setLocalSymbol(currencySymbol); }, [currency, currencySymbol]);
+
+  const handleSave = () => { setCurrency(localCurrency); setCurrencySymbol(localSymbol); toast.success("Settings saved"); };
 
   return (
-    <div className="min-h-screen bg-neutral-950 text-white">
-      <header className="sticky top-0 z-10 flex h-16 items-center gap-4 border-b border-neutral-800 bg-neutral-950/80 px-4 backdrop-blur-sm md:px-6">
-        <h1 className="text-xl font-semibold">Profile & Settings</h1>
+    <div className="min-h-screen bg-background">
+      <header className="bg-card border-b border-border px-6 py-5">
+        <p className="text-[9px] font-bold uppercase tracking-[0.15em] text-tertiary">Account</p>
+        <h1 className="text-[22px] font-extrabold tracking-[-0.05em] text-foreground mt-0.5">Profile & Settings</h1>
       </header>
-      <main className="flex-1 p-4 md:p-6">
-        <div className="mx-auto max-w-4xl space-y-8">
-          {/* Personal Details Section */}
-          <div className="rounded-xl border border-neutral-800 bg-neutral-900 p-6">
-            <h2 className="text-lg font-semibold">Personal Details</h2>
-            <div className="mt-6 grid gap-6 md:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="name">Name</Label>
-                <Input
-                  id="name"
-                  value={user?.name || "Anonymous User"}
-                  readOnly
-                  className="bg-neutral-800 border-neutral-700"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  value={user?.email || "No email provided"}
-                  readOnly
-                  className="bg-neutral-800 border-neutral-700"
-                />
-              </div>
+      <main className="max-w-2xl mx-auto px-4 sm:px-6 py-8 space-y-6">
+        <Card title="Personal Details">
+          <div className="grid gap-5 md:grid-cols-2">
+            <div><Label>Name</Label><ReadInput value={user?.name || "Anonymous User"} /></div>
+            <div><Label>Email</Label><ReadInput value={user?.email || "No email provided"} /></div>
+          </div>
+        </Card>
+        <Card title="Currency Settings" description="Customize how monetary values are displayed across the application.">
+          <div className="grid gap-5 md:grid-cols-2">
+            <div>
+              <Label>Currency</Label>
+              <select value={localCurrency} onChange={(e) => setLocalCurrency(e.target.value)}
+                className="w-full h-11 bg-input rounded-[6px] px-3.5 text-[13px] font-medium text-foreground ring-1 ring-border focus:outline-none focus:ring-2 focus:ring-ring transition appearance-none cursor-pointer"
+              >
+                <option value="TZS">Tanzanian Shilling (TZS)</option>
+                <option value="USD">United States Dollar (USD)</option>
+                <option value="EUR">Euro (EUR)</option>
+              </select>
+            </div>
+            <div>
+              <Label>Symbol</Label>
+              <input value={localSymbol} onChange={(e) => setLocalSymbol(e.target.value)}
+                className="w-full h-11 bg-input rounded-[6px] px-3.5 text-[13px] font-medium text-foreground ring-1 ring-border focus:outline-none focus:ring-2 focus:ring-ring transition"
+              />
             </div>
           </div>
-
-          {/* Currency Settings Section */}
-          <div className="rounded-xl border border-neutral-800 bg-neutral-900 p-6">
-            <h2 className="text-lg font-semibold">Currency Settings</h2>
-            <p className="mt-1 text-sm text-neutral-400">
-              Customize how monetary values are displayed across the
-              application. The display unit (e.g., K for thousands, M for millions) will be determined automatically based on the amount.
-            </p>
-            <div className="mt-6 grid gap-6 md:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="currency-select">Currency</Label>
-                <Select
-                  value={localCurrency}
-                  onValueChange={setLocalCurrency}
-                >
-                  <SelectTrigger
-                    id="currency-select"
-                    className="bg-neutral-800 border-neutral-700"
-                  >
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent className="bg-neutral-900 border-neutral-800 text-neutral-200">
-                    <SelectItem value="TZS" className="focus:bg-neutral-800">
-                      Tanzanian Shilling (TZS)
-                    </SelectItem>
-                    <SelectItem value="USD" className="focus:bg-neutral-800">
-                      United States Dollar (USD)
-                    </SelectItem>
-                    <SelectItem value="EUR" className="focus:bg-neutral-800">
-                      Euro (EUR)
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="currency-symbol">Symbol</Label>
-                <Input
-                  id="currency-symbol"
-                  value={localCurrencySymbol}
-                  onChange={(e) => setLocalCurrencySymbol(e.target.value)}
-                  className="bg-neutral-800 border-neutral-700"
-                />
-              </div>
-            </div>
-            <div className="mt-6 flex justify-end">
-              <Button onClick={handleSaveChanges}>Save Changes</Button>
-            </div>
+          <div className="mt-6 flex justify-end">
+            <button onClick={handleSave}
+              className="h-10 px-6 bg-foreground text-background text-[12px] font-bold rounded-[6px] hover:opacity-80 active:scale-95 transition"
+            >
+              Save Changes
+            </button>
           </div>
-        </div>
+        </Card>
       </main>
     </div>
   );
-};
-
-export default ProfilePage;
+}

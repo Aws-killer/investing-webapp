@@ -1,22 +1,9 @@
-// pages/dashboard/PerformanceWidget.jsx
 "use client";
-
 import React from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-
-export const PerformanceWidget = () => {
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Performance</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <p className="text-muted-foreground">
-          Performance metrics coming soon.
-        </p>
-      </CardContent>
-    </Card>
-  );
-};
-
+export const PerformanceWidget = () => (
+  <div className="bg-card rounded-[12px] card-shadow p-5">
+    <p className="text-[9px] font-bold uppercase tracking-[0.15em] text-muted-foreground mb-3">Performance</p>
+    <p className="text-[13px] text-tertiary font-medium">Performance metrics coming soon.</p>
+  </div>
+);
 export default PerformanceWidget;

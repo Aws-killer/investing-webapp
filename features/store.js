@@ -14,8 +14,8 @@ import storage from "redux-persist/lib/storage";
 import { stocksApi } from "./api/stocksApi";
 import { portfoliosApi } from "./api/portfoliosApi";
 import { usersApi } from "./api/usersApi";
-import { uttApi } from "./api/uttApi";
 import { bondsApi } from "./api/bondsApi";
+import { fundsApi } from "./api/fundsApi";
 import authReducer from "./slices/authSlice";
 
 const persistConfig = {
@@ -32,8 +32,8 @@ export const store = configureStore({
     [stocksApi.reducerPath]: stocksApi.reducer,
     [portfoliosApi.reducerPath]: portfoliosApi.reducer,
     [usersApi.reducerPath]: usersApi.reducer,
-    [uttApi.reducerPath]: uttApi.reducer,
     [bondsApi.reducerPath]: bondsApi.reducer,
+    [fundsApi.reducerPath]: fundsApi.reducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({
@@ -44,8 +44,8 @@ export const store = configureStore({
       .concat(stocksApi.middleware)
       .concat(portfoliosApi.middleware)
       .concat(usersApi.middleware)
-      .concat(uttApi.middleware)
-      .concat(bondsApi.middleware),
+      .concat(bondsApi.middleware)
+      .concat(fundsApi.middleware),
 });
 
 // Enable refetchOnFocus and refetchOnReconnect

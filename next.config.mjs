@@ -8,11 +8,12 @@ const nextConfig = {
     return [
       {
         source: "/api/:path*", // local path
-        destination:"https://yakova-xyhlf.hf.space/:path*", // remote API
+        destination:"http://127.0.0.1:8000/:path*", // remote API
       },
     ];
   },
 };
 export default withPWA({
-  dest: 'public'
+  dest: 'public',
+  disable: process.env.NODE_ENV === 'development',
 })(nextConfig);

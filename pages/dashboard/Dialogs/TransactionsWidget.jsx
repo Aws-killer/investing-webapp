@@ -26,7 +26,7 @@ import {
   useAddUttToPortfolioMutation,
   useAddBondToPortfolioMutation,
 } from "@/features/api/portfoliosApi"; // Adjust path
-import { useDashboard } from "@/Providers/dashboard";
+import { useDashboard } from "@/features/context/dashboard-context";
 
 // Helper for date formatting
 const formatDateForInput = (date) => {
@@ -210,13 +210,13 @@ export const AddTransactionDialog = ({
   const getPriceLabel = () => {
     switch (formData.assetType) {
       case "STOCK":
-        return "Price per Share (€)";
+        return "Price per Share (TSh)";
       case "UTT":
-        return "Price per Unit (€)";
+        return "Price per Unit (TSh)";
       case "BOND":
-        return "Total Purchase Price for Lot (€)"; // For bonds, it's total cost
+        return "Total Purchase Price for Lot (TSh)"; // For bonds, it's total cost
       default:
-        return "Price (€)";
+        return "Price (TSh)";
     }
   };
 

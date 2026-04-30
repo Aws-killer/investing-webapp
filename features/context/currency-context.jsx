@@ -11,8 +11,8 @@ export function useCurrency() {
 }
 
 export function CurrencyProvider({ children }) {
-  const [currency, setCurrency] = useState('TZS');
-  const [currencySymbol, setCurrencySymbol] = useState('Tz');
+  const [currency, setCurrency] = useState('Tsh');
+  const [currencySymbol, setCurrencySymbol] = useState('Tsh');
 
   const formatAmount = (amount) => {
     if (amount === null || typeof amount === 'undefined' || isNaN(parseFloat(amount))) {
@@ -39,7 +39,7 @@ export function CurrencyProvider({ children }) {
       suffix = 'K';
     }
 
-    return `${currencySymbol}${value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}${suffix}`;
+    return `${currencySymbol} ${value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}${suffix}`;
   };
 
   const value = {

@@ -1,53 +1,34 @@
-// pages/dashboard/PositionsWidget.jsx
 "use client";
 
 import React, { useState } from "react";
-import { useDashboard } from "@/Providers/dashboard";
-import { useCurrency } from "@/Providers/CurrencyProvider";
 import { AddTransactionDialog } from "./Dialogs/AddTransactionDialog";
 import { cn } from "@/lib/utils";
-import { Skeleton } from "@/components/ui/skeleton";
 import { ArrowUpRight, ArrowDownRight, Plus, Building2, Wallet } from "lucide-react";
-
-// --- SUB COMPONENTS ---
-
-const WidgetCard = ({ children, title, action }) => (
-  <div className="bg-[#121212] rounded-xl border border-zinc-800 overflow-hidden">
-    <div className="flex items-center justify-between p-5 border-b border-zinc-800/50">
-        <h3 className="text-sm font-bold text-zinc-100">{title}</h3>
-        {action}
-    </div>
-    {children}
-  </div>
-);
+import { useDashboard } from "@/features/context/dashboard-context";
+import { useCurrency } from "@/features/context/currency-context";
 
 const PositionItem = ({ pos, formatAmount }) => {
-    const isPositive = pos.profit_loss >= 0;
-    return (
-        <div className="flex items-center justify-between p-4 hover:bg-white/[0.02] transition-colors border-b border-zinc-800/50 last:border-0 cursor-pointer group">
-            {/* Left: Icon & Info */}
-            <div className="flex items-center gap-4">
-                <div className="h-10 w-10 rounded-xl bg-zinc-800 flex items-center justify-center text-zinc-400 border border-zinc-700/50">
-                    {pos.asset_type === 'STOCK' ? <Building2 size={18} /> : <Wallet size={18} />}
-                </div>
-                <div>
-                    <div className="font-bold text-sm text-zinc-100">{pos.asset_symbol}</div>
-                    <div className="text-xs text-zinc-500">{pos.asset_name}</div>
-                </div>
-            </div>
-
-            {/* Right: Value & PL */}
-            <div className="text-right">
-                <div className="font-mono font-medium text-sm text-zinc-200">
-                    {formatAmount(pos.current_value)}
-                </div>
-                <div className={cn("flex items-center justify-end gap-1 text-xs font-medium mt-0.5", isPositive ? "text-emerald-400" : "text-red-400")}>
-                    {isPositive ? <ArrowUpRight size={12} /> : <ArrowDownRight size={12} />}
-                    {formatAmount(pos.profit_loss)} ({pos.profit_loss_percent}%)
-                </div>
-            </div>
+  const isPositive = pos.profit_loss >= 0;
+  return (
+    <div className="flex items-center justify-between px-5 py-3.5 hover:bg-background transition-colors border-b border-border last:border-0 cursor-pointer">
+      <div className="flex items-center gap-3.5">
+        <div className="h-9 w-9 rounded-[8px] bg-muted flex items-center justify-center text-muted-foreground">
+          {pos.asset_type === "STOCK" ? <Building2 size={16} /> : <Wallet size={16} />}
         </div>
-    );
+        <div>
+          <div className="text-[13px] font-bold text-foreground">{pos.asset_symbol}</div>
+          <div className="text-[11px] text-tertiary font-medium">{pos.asset_name}</div>
+        </div>
+      </div>
+      <div className="text-right">
+        <div className="font-mono text-[13px] font-semibold text-foreground">{formatAmount(pos.current_value)}</div>
+        <div className={cn("flex items-center justify-end gap-0.5 text-[11px] font-semibold mt-0.5", isPositive ? "text-emerald-500" : "text-red-500")}>
+          {isPositive ? <ArrowUpRight size={11} /> : <ArrowDownRight size={11} />}
+          {formatAmount(pos.profit_loss)} ({pos.profit_loss_percent}%)
+        </div>
+      </div>
+    </div>
+  );
 };
 
 export const PositionsWidget = () => {
@@ -55,42 +36,28 @@ export const PositionsWidget = () => {
   const { formatAmount } = useCurrency();
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
 
-  if (isLoadingPositions) return <Skeleton className="h-[400px] w-full bg-zinc-900 rounded-xl" />;
+  if (isLoadingPositions) return <div className="h-[300px] w-full bg-card rounded-[12px] card-shadow animate-pulse" />;
   if (!selectedPortfolio) return null;
 
   return (
     <>
-      <WidgetCard 
-        title="Positions" 
-        action={
-            <button 
-                onClick={() => setIsAddDialogOpen(true)}
-                className="h-7 w-7 flex items-center justify-center rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-400 transition-colors"
-            >
-                <Plus size={16} />
-            </button>
-        }
-      >
-        <div className="flex flex-col">
-            {positions.length === 0 ? (
-                <div className="p-8 text-center text-zinc-500 text-sm">
-                    No positions yet. Add a transaction to get started.
-                </div>
-            ) : (
-                positions.map((pos, i) => (
-                    <PositionItem key={`${pos.asset_id}-${i}`} pos={pos} formatAmount={formatAmount} />
-                ))
-            )}
+      <div className="bg-card rounded-[12px] card-shadow overflow-hidden">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+          <span className="text-[9px] font-bold uppercase tracking-[0.15em] text-muted-foreground">Positions</span>
+          <button onClick={() => setIsAddDialogOpen(true)}
+            className="h-7 w-7 flex items-center justify-center rounded-[6px] bg-muted hover:bg-accent text-muted-foreground transition"
+          >
+            <Plus size={14} />
+          </button>
         </div>
-      </WidgetCard>
-
-      {selectedPortfolioId && (
-         <AddTransactionDialog 
-            isOpen={isAddDialogOpen} 
-            onOpenChange={setIsAddDialogOpen} 
-            portfolioIdFromWidget={selectedPortfolioId} 
-         />
-      )}
+        <div>
+          {positions.length === 0
+            ? <div className="px-5 py-10 text-center text-[13px] text-tertiary font-medium">No positions yet. Add a transaction to get started.</div>
+            : positions.map((pos, i) => <PositionItem key={`${pos.asset_id}-${i}`} pos={pos} formatAmount={formatAmount} />)
+          }
+        </div>
+      </div>
+      {selectedPortfolioId && <AddTransactionDialog isOpen={isAddDialogOpen} onOpenChange={setIsAddDialogOpen} portfolioIdFromWidget={selectedPortfolioId} />}
     </>
   );
 };

@@ -23,7 +23,7 @@ export const usersApi = createApi({
                 username: data.data.username,
                 email: data.data.email,
               },
-              token: data.token, // Assuming the API returns a token
+              token: data.data.token,
             })
           );
         } catch (err) {
@@ -37,6 +37,23 @@ export const usersApi = createApi({
         method: "POST",
         body: userData,
       }),
+      async onQueryStarted(_, { dispatch, queryFulfilled }) {
+        try {
+          const { data } = await queryFulfilled;
+          dispatch(
+            setCredentials({
+              user: {
+                id: data.data.id,
+                username: data.data.username,
+                email: data.data.email,
+              },
+              token: data.data.token,
+            })
+          );
+        } catch (err) {
+          // Handle error if needed
+        }
+      },
     }),
     getWatchlist: builder.query({
       query: () => `/users/watchlist`,

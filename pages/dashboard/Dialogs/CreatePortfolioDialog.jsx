@@ -1,119 +1,139 @@
-// pages/dashboard/Dialogs/CreatePortfolioDialog.jsx
 "use client";
 
 import React, { useState } from "react";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-  DialogClose,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import { Drawer, DrawerContent } from "@/components/ui/drawer";
 import { useCreatePortfolioMutation } from "@/features/api/portfoliosApi";
 import { useToast } from "@/components/ui/use-toast";
 import { useSelector } from "react-redux";
 import { selectCurrentUser } from "@/features/slices/authSlice";
-import { Loader2, Briefcase, FileText, Plus, CheckCircle2 } from "lucide-react";
+import { Loader2, X, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useIsMobile } from "@/hooks/ui/use-mobile";
 
-export const CreatePortfolioDialog = ({ isOpen, onOpenChange, onPortfolioCreated }) => {
+const FieldLabel = ({ children }) => (
+  <label className="text-[11px] font-bold uppercase tracking-[0.1em] text-tertiary">{children}</label>
+);
+
+const CreatePortfolioForm = ({ onClose }) => {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const { toast } = useToast();
   const currentUser = useSelector(selectCurrentUser);
-
   const [createPortfolio, { isLoading }] = useCreatePortfolioMutation();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!name.trim()) return;
-
     try {
-      const result = await createPortfolio({
+      await createPortfolio({
         name,
         description,
         userIdUsedForGetPortfolios: currentUser?.id,
       }).unwrap();
-      
       toast({
-        title: <div className="flex items-center gap-2 text-emerald-400"><CheckCircle2 size={18} /> Success</div>,
-        description: "Portfolio created successfully!",
-        className: "bg-[#121212] border-zinc-800 text-white"
+        title: (
+          <div className="flex items-center gap-2 text-emerald-500">
+            <Check size={16} /> Portfolio created
+          </div>
+        ),
+        description: `"${name}" is ready to use.`,
+        className: "bg-card border-border text-foreground",
       });
-      
       setName("");
       setDescription("");
-      onOpenChange(false);
-      if (onPortfolioCreated) onPortfolioCreated(result.data);
+      onClose();
     } catch (err) {
       console.error(err);
+      toast({ title: "Error", description: "Failed to create portfolio.", variant: "destructive" });
     }
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[450px] bg-[#0a0a0a] border border-zinc-800 text-zinc-200 shadow-2xl p-0 overflow-hidden rounded-2xl">
-        {/* Header with Gradient */}
-        <div className="relative p-6 bg-gradient-to-b from-zinc-900 to-[#0a0a0a] border-b border-zinc-800">
-            <div className="flex items-center gap-3 mb-2">
-                <div className="h-10 w-10 rounded-xl bg-emerald-500/10 flex items-center justify-center border border-emerald-500/20 shadow-[0_0_15px_-3px_rgba(16,185,129,0.15)]">
-                    <Plus className="h-5 w-5 text-emerald-500" />
-                </div>
-                <div>
-                    <DialogTitle className="text-lg font-bold text-white">Create Portfolio</DialogTitle>
-                    <DialogDescription className="text-xs text-zinc-500">Start tracking a new collection of assets</DialogDescription>
-                </div>
-            </div>
+    <div className="flex flex-col">
+      <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b border-border flex-shrink-0">
+        <div>
+          <h2 className="text-[16px] font-extrabold tracking-[-0.04em] text-foreground">New Portfolio</h2>
+          <p className="text-[11px] text-tertiary font-medium mt-0.5">Track a new collection of assets</p>
+        </div>
+        <button
+          type="button"
+          onClick={onClose}
+          className="w-7 h-7 flex items-center justify-center rounded-[6px] text-tertiary hover:text-foreground hover:bg-muted transition-colors"
+        >
+          <X size={16} />
+        </button>
+      </div>
+
+      <form onSubmit={handleSubmit} className="p-5 space-y-4">
+        <div className="space-y-1.5">
+          <FieldLabel>Portfolio Name</FieldLabel>
+          <input
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="e.g. Retirement Fund"
+            autoFocus
+            className="w-full h-10 bg-background border border-border text-[13px] text-foreground rounded-[6px] px-3 focus:outline-none focus:ring-2 focus:ring-ring placeholder:text-tertiary"
+          />
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-5">
-            <div className="space-y-2">
-                <label className="text-xs font-semibold text-zinc-400 uppercase tracking-wider ml-1">Portfolio Name</label>
-                <div className="relative">
-                    <Briefcase className="absolute left-3 top-3 h-4 w-4 text-zinc-600" />
-                    <Input
-                        value={name}
-                        onChange={(e) => setName(e.target.value)}
-                        className="pl-10 bg-[#121212] border-zinc-800 focus:border-emerald-500/50 focus:ring-emerald-500/20 h-11 text-white placeholder:text-zinc-700"
-                        placeholder="e.g. Retirement Fund"
-                        autoFocus
-                    />
-                </div>
-            </div>
+        <div className="space-y-1.5">
+          <FieldLabel>Description <span className="normal-case tracking-normal text-tertiary font-medium">(optional)</span></FieldLabel>
+          <textarea
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            placeholder="Notes about this portfolio…"
+            rows={3}
+            className="w-full bg-background border border-border text-[13px] text-foreground rounded-[6px] px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-ring placeholder:text-tertiary resize-none"
+          />
+        </div>
 
-            <div className="space-y-2">
-                <label className="text-xs font-semibold text-zinc-400 uppercase tracking-wider ml-1">Description</label>
-                <div className="relative">
-                    <FileText className="absolute left-3 top-3 h-4 w-4 text-zinc-600" />
-                    <Textarea
-                        value={description}
-                        onChange={(e) => setDescription(e.target.value)}
-                        className="pl-10 min-h-[100px] bg-[#121212] border-zinc-800 focus:border-emerald-500/50 focus:ring-emerald-500/20 text-white placeholder:text-zinc-700 resize-none pt-3"
-                        placeholder="Optional notes..."
-                    />
-                </div>
-            </div>
+        <div className="flex gap-3 pt-1">
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex-1 h-10 text-[13px] font-semibold text-tertiary bg-muted rounded-[6px] hover:bg-accent transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            disabled={isLoading || !name.trim()}
+            className={cn(
+              "flex-1 h-10 text-[13px] font-bold rounded-[6px] transition-all flex items-center justify-center gap-2",
+              isLoading || !name.trim()
+                ? "bg-muted text-tertiary cursor-not-allowed"
+                : "bg-foreground text-background hover:opacity-90 active:scale-[0.98]"
+            )}
+          >
+            {isLoading && <Loader2 size={14} className="animate-spin" />}
+            Create Portfolio
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+};
 
-            <DialogFooter className="pt-2">
-                <DialogClose asChild>
-                    <Button type="button" variant="ghost" className="text-zinc-500 hover:text-white hover:bg-zinc-900">
-                        Cancel
-                    </Button>
-                </DialogClose>
-                <Button 
-                    type="submit" 
-                    disabled={isLoading || !name.trim()}
-                    className="bg-emerald-600 hover:bg-emerald-500 text-white font-semibold px-6"
-                >
-                    {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Create Portfolio"}
-                </Button>
-            </DialogFooter>
-        </form>
+export const CreatePortfolioDialog = ({ isOpen, onOpenChange, onPortfolioCreated: _ }) => {
+  const isMobile = useIsMobile();
+  const onClose = () => onOpenChange(false);
+
+  if (isMobile) {
+    return (
+      <Drawer open={isOpen} onOpenChange={onOpenChange} direction="bottom">
+        <DrawerContent className="bg-card border-border">
+          <CreatePortfolioForm onClose={onClose} />
+        </DrawerContent>
+      </Drawer>
+    );
+  }
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+      <DialogContent showCloseButton={false} className="max-w-[380px] bg-card border-border text-foreground p-0 gap-0 rounded-[12px] overflow-hidden">
+        <DialogTitle className="sr-only">New Portfolio</DialogTitle>
+        <CreatePortfolioForm onClose={onClose} />
       </DialogContent>
     </Dialog>
   );

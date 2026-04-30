@@ -1,4 +1,3 @@
-// ## import { createApi } from "@reduxjs/toolkit/query/react";
 import { createApi } from "@reduxjs/toolkit/query/react";
 import { baseQuery } from "./baseApi";
 
@@ -15,22 +14,21 @@ export const portfoliosApi = createApi({
   ],
   endpoints: (builder) => ({
     getPortfolios: builder.query({
-      query: (userId) => `/portfolios?user_id=${userId}`,
-      providesTags: (result, error, userId) =>
+      query: () => `/portfolios`,
+      providesTags: (result) =>
         result && result.data && result.data.portfolios
           ? [
               ...result.data.portfolios.map(({ id }) => ({
                 type: "Portfolio",
                 id,
               })),
-              { type: "Portfolio", id: "LIST", userId },
+              { type: "Portfolio", id: "LIST" },
             ]
-          : [{ type: "Portfolio", id: "LIST", userId }],
+          : [{ type: "Portfolio", id: "LIST" }],
     }),
     getPortfolioById: builder.query({
-      query: ({ userId, portfolioId }) =>
-        `/portfolios/${portfolioId}?user_id=${userId}`,
-      providesTags: (result, error, { portfolioId }) => [
+      query: (portfolioId) => `/portfolios/${portfolioId}`,
+      providesTags: (result, error, portfolioId) => [
         { type: "PortfolioSummary", id: portfolioId },
       ],
     }),
@@ -40,10 +38,7 @@ export const portfoliosApi = createApi({
         method: "POST",
         body: portfolioData,
       }),
-      // Assuming userIdUsedForGetPortfolios is part of portfolioData
-      invalidatesTags: (result, error, { userIdUsedForGetPortfolios }) => [
-        { type: "Portfolio", id: "LIST", userId: userIdUsedForGetPortfolios },
-      ],
+      invalidatesTags: [{ type: "Portfolio", id: "LIST" }],
     }),
     updatePortfolio: builder.mutation({
       query: ({ portfolioId, ...update }) => ({
@@ -51,34 +46,22 @@ export const portfoliosApi = createApi({
         method: "PUT",
         body: update,
       }),
-      invalidatesTags: (result, error, { portfolioId, userId }) => [
+      invalidatesTags: (result, error, { portfolioId }) => [
         { type: "Portfolio", id: portfolioId },
         { type: "PortfolioSummary", id: portfolioId },
-        { type: "Portfolio", id: "LIST", userId }, // Also invalidate list in case name changed
+        { type: "Portfolio", id: "LIST" },
       ],
     }),
-    // highlight-start
     deletePortfolio: builder.mutation({
-      query: ({ portfolioId, userId }) => {
-        console.log(
-          "Deleting portfolio with ID:",
-          portfolioId,
-          "for user:",
-          userId
-        );
-        return {
-          url: `/portfolios/${portfolioId}?user_id=${userId}`,
-          method: "DELETE",
-        };
-      },
-      invalidatesTags: (result, error, { userId }) => [
-        { type: "Portfolio", id: "LIST", userId },
-      ],
+      query: (portfolioId) => ({
+        url: `/portfolios/${portfolioId}`,
+        method: "DELETE",
+      }),
+      invalidatesTags: [{ type: "Portfolio", id: "LIST" }],
     }),
-    // highlight-end
     getPortfolioTransactions: builder.query({
-      query: ({ portfolioId, userId, limit = 50, offset = 0 }) =>
-        `/portfolios/${portfolioId}/transactions?user_id=${userId}&limit=${limit}&offset=${offset}`,
+      query: ({ portfolioId, limit = 50, offset = 0 }) =>
+        `/portfolios/${portfolioId}/transactions?limit=${limit}&offset=${offset}`,
       providesTags: (result, error, { portfolioId }) =>
         result && result.data && result.data.transactions
           ? [
@@ -92,7 +75,7 @@ export const portfoliosApi = createApi({
           : [{ type: "Transaction", id: "LIST", portfolioId }],
     }),
 
-    // --- NEW PERFORMANCE & CALENDAR QUERIES ---
+    // --- PERFORMANCE & CALENDAR QUERIES ---
     getPortfolioPerformance: builder.query({
       query: ({ portfolioId, period }) =>
         `/portfolios/${portfolioId}/performance?period=${period}`,
@@ -102,7 +85,6 @@ export const portfoliosApi = createApi({
     }),
 
     getPortfolioCalendar: builder.query({
-      // Using default date ranges by not passing params
       query: (portfolioId) => `/portfolios/${portfolioId}/calendar`,
       providesTags: (result, error, portfolioId) => [
         { type: "PortfolioCalendar", id: portfolioId },
@@ -116,7 +98,24 @@ export const portfoliosApi = createApi({
       ],
     }),
 
-    // --- MUTATIONS (Updated with invalidatesTags) ---
+    getPortfolioHoldings: builder.query({
+      query: (portfolioId) => `/portfolios/${portfolioId}/positions`,
+      transformResponse: (response) => {
+        if (response?.data?.positions) {
+          return response.data.positions.map((p) => ({
+            asset_id: p.asset_id,
+            asset_type: p.asset_type.toUpperCase(),
+            ...p,
+          }));
+        }
+        return [];
+      },
+      providesTags: (result, error, portfolioId) => [
+        { type: "PortfolioPositions", id: portfolioId },
+      ],
+    }),
+
+    // --- ADD MUTATIONS ---
     addStockToPortfolio: builder.mutation({
       query: ({ portfolioId, stockData }) => ({
         url: `/portfolios/${portfolioId}/stocks`,
@@ -131,11 +130,12 @@ export const portfoliosApi = createApi({
         { type: "PortfolioPositions", id: portfolioId },
       ],
     }),
-    addUttToPortfolio: builder.mutation({
-      query: ({ portfolioId, uttData }) => ({
-        url: `/portfolios/${portfolioId}/utts`,
+
+    addFundToPortfolio: builder.mutation({
+      query: ({ portfolioId, fundData }) => ({
+        url: `/portfolios/${portfolioId}/funds`,
         method: "POST",
-        body: uttData,
+        body: fundData,
       }),
       invalidatesTags: (result, error, { portfolioId }) => [
         { type: "Transaction", id: "LIST", portfolioId },
@@ -145,6 +145,7 @@ export const portfoliosApi = createApi({
         { type: "PortfolioPositions", id: portfolioId },
       ],
     }),
+
     addBondToPortfolio: builder.mutation({
       query: ({ portfolioId, bondData }) => ({
         url: `/portfolios/${portfolioId}/bonds`,
@@ -159,6 +160,8 @@ export const portfoliosApi = createApi({
         { type: "PortfolioPositions", id: portfolioId },
       ],
     }),
+
+    // --- SELL MUTATIONS ---
     sellStockFromPortfolio: builder.mutation({
       query: ({ portfolioId, stockId, sellData }) => ({
         url: `/portfolios/${portfolioId}/stocks/${stockId}/sell`,
@@ -173,9 +176,10 @@ export const portfoliosApi = createApi({
         { type: "PortfolioPositions", id: portfolioId },
       ],
     }),
-    sellUttFromPortfolio: builder.mutation({
-      query: ({ portfolioId, uttFundId, sellData }) => ({
-        url: `/portfolios/${portfolioId}/utts/${uttFundId}/sell`,
+
+    sellFundFromPortfolio: builder.mutation({
+      query: ({ portfolioId, fundId, sellData }) => ({
+        url: `/portfolios/${portfolioId}/funds/${fundId}/sell`,
         method: "POST",
         body: sellData,
       }),
@@ -187,6 +191,7 @@ export const portfoliosApi = createApi({
         { type: "PortfolioPositions", id: portfolioId },
       ],
     }),
+
     sellBondFromPortfolio: builder.mutation({
       query: ({ portfolioId, bondId, sellData }) => ({
         url: `/portfolios/${portfolioId}/bonds/${bondId}/sell`,
@@ -209,17 +214,22 @@ export const {
   useGetPortfolioByIdQuery,
   useCreatePortfolioMutation,
   useUpdatePortfolioMutation,
-  // highlight-start
   useDeletePortfolioMutation,
-  // highlight-end
   useGetPortfolioTransactionsQuery,
+
+  // Add mutations
   useAddStockToPortfolioMutation,
-  useAddUttToPortfolioMutation,
+  useAddFundToPortfolioMutation,
   useAddBondToPortfolioMutation,
+
+  // Sell mutations
   useSellStockFromPortfolioMutation,
-  useSellUttFromPortfolioMutation,
+  useSellFundFromPortfolioMutation,
   useSellBondFromPortfolioMutation,
+
+  // Query hooks
   useGetPortfolioPerformanceQuery,
   useGetPortfolioCalendarQuery,
   useGetPortfolioPositionsQuery,
+  useGetPortfolioHoldingsQuery,
 } = portfoliosApi;

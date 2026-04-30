@@ -1,25 +1,19 @@
+// features/api/bondsApi.js
 import { createApi } from "@reduxjs/toolkit/query/react";
 import { baseQuery } from "./baseApi";
 
 export const bondsApi = createApi({
   reducerPath: "bondsApi",
   baseQuery,
+  tagTypes: ["Bonds"],
   endpoints: (builder) => ({
     getBonds: builder.query({
-      query: () => "/bonds",
+      query: () => "/bonds?limit=1000", // Fetch enough to populate search
+      transformResponse: (response) => response.data?.bonds || [],
+      providesTags: ["Bonds"],
     }),
     getBondById: builder.query({
       query: (bondId) => `/bonds/${bondId}`,
-    }),
-    getBondYields: builder.query({
-      query: (bondId) => `/bonds/${bondId}/yields`,
-    }),
-    addBondToPortfolio: builder.mutation({
-      query: ({ portfolioId, bondData }) => ({
-        url: `/portfolios/${portfolioId}/bonds`,
-        method: "POST",
-        body: bondData,
-      }),
     }),
   }),
 });
@@ -27,6 +21,4 @@ export const bondsApi = createApi({
 export const {
   useGetBondsQuery,
   useGetBondByIdQuery,
-  useGetBondYieldsQuery,
-  useAddBondToPortfolioMutation,
 } = bondsApi;

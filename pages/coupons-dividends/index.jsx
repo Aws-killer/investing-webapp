@@ -1,77 +1,50 @@
-// "use client";
-
-// import React from "react";
-// import { withAuth } from "@/components/with-auth";
-// import { DashboardProvider, useDashboard } from "@/Providers/dashboard";
-// import { PortfolioSelector } from "../dashboard/PortfolioSelector";
-// import { Card, CardContent } from "@/components/ui/card";
-// import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-
-// import { Header } from "./Header";
-// import { SummaryCards } from "./SummaryCards";
-// import { DividendsTable } from "./DividendsTable";
-// import { CouponsTable } from "./CouponsTable";
-
-// const CouponsDividendsPageInternal = () => {
-//   const { selectedPortfolio } = useDashboard();
-//   return (
-//     <div className="dark bg-black text-white min-h-screen p-4 md:p-6 font-sans">
-//       <div className="max-w-screen-xl mx-auto">
-//         <Header />
-//         <PortfolioSelector />
-
-//         {selectedPortfolio ? (
-//           <>
-//             <SummaryCards />
-//             <Card>
-//               <CardContent className="pt-6">
-//                 <Tabs defaultValue="dividends">
-//                   <TabsList className="grid w-full grid-cols-2">
-//                     <TabsTrigger value="dividends">
-//                       Dividends (Stocks)
-//                     </TabsTrigger>
-//                     <TabsTrigger value="coupons">Coupons (Bonds)</TabsTrigger>
-//                   </TabsList>
-//                   <TabsContent value="dividends" className="mt-4">
-//                     <DividendsTable />
-//                   </TabsContent>
-//                   <TabsContent value="coupons" className="mt-4">
-//                     <CouponsTable />
-//                   </TabsContent>
-//                 </Tabs>
-//               </CardContent>
-//             </Card>
-//           </>
-//         ) : (
-//           <Card className="flex items-center justify-center h-64">
-//             <p className="text-muted-foreground">
-//               Please select a portfolio to view its income details.
-//             </p>
-//           </Card>
-//         )}
-//       </div>
-//     </div>
-//   );
-// };
-
-// const CouponsDividendsPage = () => {
-//   return (
-//     <DashboardProvider>
-//       <CouponsDividendsPageInternal />
-//     </DashboardProvider>
-//   );
-// };
-
-// export default withAuth(CouponsDividendsPage);
-
-
-// rfc component
-
 "use client";
-
 import React from "react";
-import { withAuth } from "@/components/with-auth";
-const CouponsDividendsPage = () => {
-  return <div>Coupons & Dividends Page</div>;
-}
+import { withAuth } from "@/features/utils/with-auth";
+import { DashboardProvider, useDashboard } from "@/features/context/dashboard-context";
+import { PortfolioSelector } from "../dashboard/PortfolioSelector";
+import { Header } from "./Header";
+import { SummaryCards } from "./SummaryCards";
+import { DividendsTable } from "./DividendsTable";
+import { CouponsTable } from "./CouponsTable";
+
+const TabsContent = () => {
+  const [tab, setTab] = React.useState("dividends");
+  return (
+    <>
+      <div className="flex border-b border-border">
+        {[{ id: "dividends", label: "Dividends (Stocks)" }, { id: "coupons", label: "Coupons (Bonds)" }].map(({ id, label }) => (
+          <button key={id} onClick={() => setTab(id)}
+            className={`px-6 py-3.5 text-[11px] font-bold uppercase tracking-[0.1em] transition border-b-2 ${tab === id ? "border-foreground text-foreground" : "border-transparent text-tertiary hover:text-muted-foreground"}`}
+          >{label}</button>
+        ))}
+      </div>
+      {tab === "dividends" ? <DividendsTable /> : <CouponsTable />}
+    </>
+  );
+};
+
+const CouponsDividendsPageInternal = () => {
+  const { selectedPortfolio } = useDashboard();
+  return (
+    <div className="min-h-screen bg-background">
+      <div className="max-w-screen-xl px-4 sm:px-6 md:px-10 mx-auto py-6">
+        <Header />
+        <PortfolioSelector />
+        {selectedPortfolio ? (
+          <div className="space-y-5">
+            <SummaryCards />
+            <div className="bg-card rounded-[12px] card-shadow overflow-hidden"><TabsContent /></div>
+          </div>
+        ) : (
+          <div className="bg-card rounded-[12px] card-shadow flex items-center justify-center h-56">
+            <p className="text-[13px] text-tertiary font-medium">Select a portfolio to view your income distribution.</p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+const CouponsDividendsPage = () => <DashboardProvider><CouponsDividendsPageInternal /></DashboardProvider>;
 export default withAuth(CouponsDividendsPage);

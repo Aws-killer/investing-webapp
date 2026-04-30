@@ -33,7 +33,7 @@ export const DashboardProvider = ({ children }) => {
   const [timeframe, setTimeframe] = useState("1M"); // State for performance period
 
   const { data: portfoliosApiResponse, isLoading: isLoadingPortfolios } =
-    useGetPortfoliosQuery(userId, { skip: !userId });
+    useGetPortfoliosQuery(undefined, { skip: !userId });
 
   const portfolios = useMemo(
     () => portfoliosApiResponse?.data?.portfolios || [],
@@ -78,7 +78,7 @@ export const DashboardProvider = ({ children }) => {
     error: transactionsError,
     refetch: refetchTransactions,
   } = useGetPortfolioTransactionsQuery(
-    { portfolioId: selectedPortfolioId, userId, limit: 200, offset: 0 },
+    { portfolioId: selectedPortfolioId, limit: 200, offset: 0 },
     { skip: !selectedPortfolioId || !userId }
   );
 

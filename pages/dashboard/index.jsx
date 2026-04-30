@@ -1,11 +1,8 @@
-// pages/dashboard/index.jsx
 "use client";
 
 import React from "react";
-import { withAuth } from "@/components/with-auth";
-import { DashboardProvider } from "@/Providers/dashboard";
-
-// Import all the new widget components
+import { withAuth } from "@/features/utils/with-auth";
+import { DashboardProvider } from "@/features/context/dashboard-context";
 import { AIWidget } from "./AIWidget";
 import { AllocationWidget } from "./AllocationWidget";
 import { Breadcrumbs } from "./Breadcrumbs";
@@ -17,58 +14,31 @@ import { PositionsWidget } from "./PositionsWidget";
 import { TransactionsWidget } from "./TransactionsWidget";
 import InstallPWA from "@/components/InstallPWA";
 
-
-const AuroraBackground = () => (
-  <div className="fixed inset-0 -z-10 bg-[#0a0a0a] overflow-hidden pointer-events-none">
-    <div className="absolute top-[-20%] left-[20%] w-[60%] h-[60%] rounded-full bg-emerald-900/10 blur-[120px]" />
-    <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] rounded-full bg-teal-900/10 blur-[120px]" />
-    <div 
-        className="absolute inset-0 opacity-[0.02]" 
-        style={{ backgroundImage: "linear-gradient(#ffffff 1px, transparent 1px), linear-gradient(to right, #ffffff 1px, transparent 1px)", backgroundSize: "40px 40px" }} 
-    />
-  </div>
-);
-
-// This component lays out the dashboard structure
-const DashboardPageInternal = () => {
-  return (
-    // UPDATED: Changed `p-4` to `px-0 py-4` to remove horizontal gaps on mobile
-    // while keeping vertical spacing. The `md:p-6` class will re-apply padding on larger screens.
-    <div className="dark bg-black text-white min-h-screen px-0 py-4 md:p-6 font-sans">
-      <InstallPWA />
-      <AuroraBackground/>
-      {/* UPDATED: Changed `px-4` to `px-4` to prevent double-padding on mobile.
-          The parent now controls the edge spacing. This container now adds padding
-          back starting from the `sm` breakpoint. */}
-      <div className="max-w-screen-xl px-4 sm:px-6 md:px-10 mx-auto">
-        <Breadcrumbs />
-        <PortfolioSelector />
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 flex flex-col gap-6">
-            <PortfolioWidget />
-            <PositionsWidget />
-            <TransactionsWidget />
-          </div>
-          <div className="lg:col-span-1 space-y-6">
-            <AllocationWidget />
-            <CalendarWidget />
-            <AIWidget />
-            <PerformanceWidget />
-          </div>
+const DashboardPageInternal = () => (
+  <div className="min-h-screen bg-background">
+    <InstallPWA />
+    <div className="max-w-screen-xl px-4 sm:px-6 md:px-10 mx-auto py-6">
+      <Breadcrumbs />
+      <PortfolioSelector />
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+        <div className="lg:col-span-2 flex flex-col gap-5">
+          <PortfolioWidget />
+          <PositionsWidget />
+          <TransactionsWidget />
+        </div>
+        <div className="lg:col-span-1 space-y-5">
+          <AllocationWidget />
+          <CalendarWidget />
+          <AIWidget />
+          <PerformanceWidget />
         </div>
       </div>
     </div>
-  );
-};
+  </div>
+);
 
-// This component wraps the page with necessary providers
-const DashboardPage = () => {
-  return (
-    <DashboardProvider>
-      <DashboardPageInternal />
-    </DashboardProvider>
-  );
-};
+const DashboardPage = () => (
+  <DashboardProvider><DashboardPageInternal /></DashboardProvider>
+);
 
-// Export the final page, wrapped with authentication
 export default withAuth(DashboardPage);
