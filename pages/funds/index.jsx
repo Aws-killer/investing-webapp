@@ -6,7 +6,7 @@ import {
   useCompareFundsQuery,
 } from "@/features/api/fundsApi";
 import {
-  RefreshCw, GitCompare, X, Star, AlertTriangle, Info, ChevronDown, ChevronUp,
+  RefreshCw, GitCompare, X, Star, AlertTriangle, Info,
 } from "lucide-react";
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -70,12 +70,58 @@ const DATE_PRESETS = [
 ];
 
 const DIST_FREQ = [
-  { label: "None", value: 0 },
-  { label: "Annual", value: 1 },
-  { label: "Semi-ann.", value: 2 },
-  { label: "Quarterly", value: 4 },
-  { label: "Monthly", value: 12 },
+  { label: "None",      value: 0  },
+  { label: "Annual",    value: 1  },
+  { label: "Semi-ann.", value: 2  },
+  { label: "Quarterly", value: 4  },
+  { label: "Monthly",   value: 12 },
 ];
+
+// Per-fund distribution constraints + plan conditions from offer documents
+const FUND_DIST_CONFIG = {
+  "Bond Fund": {
+    freqOptions: [0, 2, 12],
+    freqLabels:  { 0: "Reinvest", 2: "Semi-ann.", 12: "Monthly" },
+    planConditions: {
+      0:  { label: "Reinvestment Plan",              minInitial: 50_000,     minAdditional: 5_000, exitFee: null },
+      2:  { label: "Semi-annual Distribution Plan",  minInitial: 5_000_000,  minAdditional: 5_000, exitFee: null },
+      12: { label: "Monthly Distribution Plan",      minInitial: 10_000_000, minAdditional: 5_000, exitFee: null },
+    },
+    hint: "Typically TZS 1.00/unit/month for the monthly plan. Check your fund statement for the declared rate.",
+    defaultPerUnit: "1",
+  },
+  "Jikimu Fund": {
+    freqOptions: [0, 1, 4],
+    freqLabels:  { 0: "Capital Growth", 1: "Annual Dividend", 4: "Quarterly Dividend" },
+    planConditions: {
+      0: { label: "Capital Growth Plan",    minInitial: 5_000,     minAdditional: 5_000,  exitFee: null },
+      1: { label: "Annual Dividend Plan",   minInitial: 1_000_000, minAdditional: 15_000, exitFee: null },
+      4: { label: "Quarterly Dividend Plan",minInitial: 2_000_000, minAdditional: 15_000, exitFee: null },
+    },
+    hint: "Max 16% p.a. (4%/quarter). Enter the declared per-unit amount from your fund statement.",
+    defaultPerUnit: "",
+  },
+  "iIncome": {
+    freqOptions: [0, 2],
+    freqLabels:  { 0: "Reinvest", 2: "Semi-ann." },
+    planConditions: {
+      0: { label: "Reinvestment",           minInitial: 10_000_000, minAdditional: 100_000, exitFee: "1% of NAV" },
+      2: { label: "Semi-annual Income",     minInitial: 10_000_000, minAdditional: 100_000, exitFee: "1% of NAV" },
+    },
+    hint: "Semi-annual at manager's discretion. Enter the declared per-unit amount from your fund statement.",
+    defaultPerUnit: "",
+  },
+  "Imaan": {
+    freqOptions: [0, 2],
+    freqLabels:  { 0: "Reinvest", 2: "Semi-ann." },
+    planConditions: {
+      0: { label: "Reinvestment",       minInitial: 100_000, minAdditional: 10_000, exitFee: "1% of NAV" },
+      2: { label: "Semi-annual Income", minInitial: 100_000, minAdditional: 10_000, exitFee: "1% of NAV" },
+    },
+    hint: "Semi-annual distribution. Enter the declared per-unit amount from your fund statement.",
+    defaultPerUnit: "",
+  },
+};
 
 const PERF_TABS = [
   { id: "weekly_return", label: "1W", navKey: "week_nav" },
@@ -303,19 +349,15 @@ function CompareTab({ allFunds }) {
   const [investAmountStr, setInvestAmountStr] = useState("");
   const investAmount = useMemo(() => parseAmount(investAmountStr), [investAmountStr]);
 
-  // Distribution settings
-  const [distFreq, setDistFreq] = useState(0);        // times per year
-  const [distPerUnitStr, setDistPerUnitStr] = useState(""); // TZS per unit per payment
-  const distPerUnit = useMemo(() => parseAmount(distPerUnitStr), [distPerUnitStr]);
-  const [showDistSettings, setShowDistSettings] = useState(false);
+  // Per-fund distribution settings: { [fundId]: { freq: number, perUnitStr: string } }
+  const [distSettings, setDistSettings] = useState({});
+
+  const getDistForFund = (id) => distSettings[id] ?? { freq: 0, perUnitStr: "" };
+  const setDistForFund = (id, key, val) =>
+    setDistSettings((prev) => ({ ...prev, [id]: { ...getDistForFund(id), [key]: val } }));
 
   /* ── Derived ── */
   const canCompare = selectedIds.length >= 2 && fromDate && toDate;
-
-  const anyPayIncome = useMemo(
-    () => selectedIds.some((id) => allFunds.find((f) => f.id === id)?.pays_income),
-    [selectedIds, allFunds],
-  );
 
   const grouped = useMemo(() => {
     const m = {};
@@ -382,9 +424,11 @@ function CompareTab({ allFunds }) {
         // Final value from units after exit
         const netEndValue = grossEndValue * exitRatio;
 
-        // Distributions: paid if fund pays income AND user selected distribution freq
-        const numPayments = meta.pays_income && distFreq > 0 && distPerUnit
-          ? Math.floor(distFreq * years)
+        // Distributions: per-fund settings
+        const dist = getDistForFund(f.id);
+        const distPerUnit = parseAmount(dist.perUnitStr);
+        const numPayments = meta.pays_income && dist.freq > 0 && distPerUnit
+          ? Math.floor(dist.freq * years)
           : 0;
         distTotal = units * (distPerUnit ?? 0) * numPayments;
 
@@ -417,7 +461,7 @@ function CompareTab({ allFunds }) {
       };
     }
     return map;
-  }, [funds, allFunds, investAmount, distFreq, distPerUnit]);
+  }, [funds, allFunds, investAmount, distSettings]);
 
   /* ── Sorted results ── */
   const sortedFunds = useMemo(
@@ -553,96 +597,6 @@ function CompareTab({ allFunds }) {
         )}
       </div>
 
-      {/* ── STEP 3: Distribution settings ── */}
-      {(anyPayIncome || showDistSettings) && (
-        <div className="rounded-2xl bg-white/[0.03] border border-white/[0.06] overflow-hidden">
-          <button
-            onClick={() => setShowDistSettings((v) => !v)}
-            className="w-full flex items-center justify-between px-5 py-4 text-left"
-          >
-            <div>
-              <p className="text-[13px] font-semibold text-white">Distribution settings</p>
-              <p className="text-[11px] text-white/40 mt-0.5">
-                {distFreq === 0 ? "Reinvesting all returns" : `Taking distributions ${DIST_FREQ.find(d => d.value === distFreq)?.label?.toLowerCase()}`}
-                {distPerUnit && distFreq > 0 ? ` · TZS ${fmt(distPerUnit, 2)}/unit` : ""}
-              </p>
-            </div>
-            {showDistSettings ? <ChevronUp size={16} className="text-white/30" /> : <ChevronDown size={16} className="text-white/30" />}
-          </button>
-
-          {showDistSettings && (
-            <div className="px-5 pb-5 space-y-5 border-t border-white/[0.06]">
-              <div className="pt-4">
-                <p className="text-[11px] text-white/40 mb-3">How often do you take distributions?</p>
-                <div className="flex flex-wrap gap-2">
-                  {DIST_FREQ.map((d) => (
-                    <button
-                      key={d.value}
-                      onClick={() => setDistFreq(d.value)}
-                      className={cn(
-                        "h-8 px-4 rounded-full text-[12px] font-semibold transition border",
-                        distFreq === d.value
-                          ? "bg-white text-black border-transparent"
-                          : "border-white/10 text-white/50 hover:text-white",
-                      )}
-                    >
-                      {d.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {distFreq > 0 && (
-                <div>
-                  <p className="text-[11px] text-white/40 mb-2">
-                    Distribution per unit per payment (TZS)
-                  </p>
-                  <div className="relative">
-                    <input
-                      type="text"
-                      inputMode="numeric"
-                      value={distPerUnitStr}
-                      onChange={(e) => setDistPerUnitStr(e.target.value)}
-                      placeholder="e.g. 1.00"
-                      className="w-full sm:w-48 bg-white/[0.05] border border-white/10 rounded-xl px-4 py-2.5 text-[14px] text-white placeholder-white/20 focus:outline-none focus:border-white/30 transition"
-                    />
-                  </div>
-                  <p className="text-[10px] text-white/30 mt-2">
-                    For the UTT Bond Fund this is typically TZS 1.00/unit/month.
-                    Check your fund statement for the declared rate.
-                  </p>
-                </div>
-              )}
-
-              <div className="space-y-2">
-                <Warning>
-                  Distribution rates are declared periodically by the fund manager and can change.
-                  The rate you enter here is used as a fixed estimate for the full period — actual payments may vary.
-                </Warning>
-                <Warning>
-                  Only funds that pay income ({anyPayIncome ? allFunds.filter(f => selectedIds.includes(f.id) && f.pays_income).map(f => f.name).join(", ") : "none selected"}) will include distributions in the simulation.
-                  Reinvestment plan funds only grow through NAV appreciation.
-                </Warning>
-                {distFreq > 0 && !distPerUnit && (
-                  <Notice>
-                    Enter the distribution per unit above to see income included in the simulation.
-                  </Notice>
-                )}
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Show dist settings toggle if no paying funds selected but user wants to configure */}
-      {!anyPayIncome && !showDistSettings && (
-        <button
-          onClick={() => setShowDistSettings(true)}
-          className="text-[11px] text-white/30 hover:text-white/60 transition underline underline-offset-2"
-        >
-          + Configure distribution settings
-        </button>
-      )}
 
       {/* ── STEP 4: Period + Compare ── */}
       <div className="rounded-2xl bg-white/[0.03] border border-white/[0.06] p-5 space-y-4">
@@ -890,17 +844,91 @@ function CompareTab({ allFunds }) {
                         )}
                       </div>
 
-                      {/* Distribution income note */}
-                      {calc.paysIncome && distFreq > 0 && !distPerUnit && (
-                        <div className="mt-2">
-                          <Notice>This fund pays income distributions. Enter the per-unit amount in Distribution Settings to include it in the simulation.</Notice>
-                        </div>
-                      )}
-                      {calc.paysIncome && distFreq === 0 && (
-                        <div className="mt-2">
-                          <Notice>This fund can pay income. Set distribution frequency above to model cash payouts.</Notice>
-                        </div>
-                      )}
+                      {/* Per-fund distribution controls (income funds only) */}
+                      {(() => {
+                        const meta = allFunds.find((x) => x.id === f.id);
+                        const distConfig = meta?.pays_income ? FUND_DIST_CONFIG[meta.name] : null;
+                        if (!distConfig) return null;
+                        const distSetting = getDistForFund(f.id);
+                        const plan = distConfig.planConditions?.[distSetting.freq];
+                        const distPerUnitVal = parseAmount(distSetting.perUnitStr);
+                        return (
+                          <div className="mt-3 pt-3 border-t border-white/[0.06] space-y-3">
+                            {/* Plan selector */}
+                            <div>
+                              <p className="text-[10px] text-white/30 uppercase tracking-widest mb-2">Distribution plan</p>
+                              <div className="flex flex-wrap gap-1.5">
+                                {distConfig.freqOptions.map((val) => (
+                                  <button
+                                    key={val}
+                                    onClick={() => setDistForFund(f.id, "freq", val)}
+                                    className={cn(
+                                      "h-7 px-3 rounded-full text-[11px] font-semibold transition border",
+                                      distSetting.freq === val
+                                        ? "bg-white text-black border-transparent"
+                                        : "border-white/10 text-white/40 hover:text-white",
+                                    )}
+                                  >
+                                    {distConfig.freqLabels[val]}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+
+                            {/* Plan conditions */}
+                            {plan && (
+                              <div className="flex flex-wrap gap-x-4 gap-y-1 text-[10px]">
+                                <div>
+                                  <span className="text-white/30">Min investment </span>
+                                  <span className="text-white/60 font-medium">{fmtMoney(plan.minInitial, meta.currency ?? "TZS")}</span>
+                                </div>
+                                <div>
+                                  <span className="text-white/30">Min top-up </span>
+                                  <span className="text-white/60 font-medium">{fmtMoney(plan.minAdditional, meta.currency ?? "TZS")}</span>
+                                </div>
+                                {plan.exitFee && (
+                                  <div>
+                                    <span className="text-white/30">Exit fee </span>
+                                    <span className="text-amber-400 font-medium">{plan.exitFee}</span>
+                                  </div>
+                                )}
+                                {!plan.exitFee && (
+                                  <div>
+                                    <span className="text-white/30">Exit fee </span>
+                                    <span className="text-emerald-400 font-medium">None</span>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+
+                            {/* Minimum investment warning */}
+                            {plan && investAmount && investAmount < plan.minInitial && (
+                              <Warning>
+                                The {plan.label} requires a minimum of {fmtMoney(plan.minInitial, meta.currency ?? "TZS")}. Your investment amount is below this threshold.
+                              </Warning>
+                            )}
+
+                            {/* Per-unit input (only for distribution plans) */}
+                            {distSetting.freq > 0 && (
+                              <div>
+                                <p className="text-[10px] text-white/30 mb-1.5">Distribution per unit per payment (TZS)</p>
+                                <input
+                                  type="text"
+                                  inputMode="numeric"
+                                  value={distSetting.perUnitStr}
+                                  onChange={(e) => setDistForFund(f.id, "perUnitStr", e.target.value)}
+                                  placeholder={distConfig.defaultPerUnit || "e.g. 1.00"}
+                                  className="w-full sm:w-44 bg-white/[0.05] border border-white/10 rounded-xl px-3 py-2 text-[13px] text-white placeholder-white/20 focus:outline-none focus:border-white/30 transition"
+                                />
+                                <p className="text-[10px] text-white/25 mt-1.5">{distConfig.hint}</p>
+                                {distSetting.freq > 0 && !distPerUnitVal && (
+                                  <p className="text-[10px] text-amber-400/60 mt-1">Enter an amount to include distributions in the simulation.</p>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })()}
                     </div>
                   </div>
                 </div>
