@@ -5,7 +5,7 @@ import { useDashboard } from "@/features/context/dashboard-context";
 import { useCurrency } from "@/features/context/currency-context";
 import { cn } from "@/lib/utils";
 import { ArrowUpRight, ArrowDownRight, Search, Star } from "lucide-react";
-import { AddTransactionDialog } from "./Dialogs/AddTransactionDialog";
+import { AddTransactionDialog } from "@/components/dashboard/AddTransactionDialog";
 
 const WatchlistItem = ({ position, formatAmount }) => {
   const isPositive = parseFloat(position.profit_loss_percent || 0) >= 0;

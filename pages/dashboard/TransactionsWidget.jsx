@@ -5,7 +5,7 @@ import { useDashboard } from "@/features/context/dashboard-context";
 import { useCurrency } from "@/features/context/currency-context";
 import { cn } from "@/lib/utils";
 import { ArrowUpRight, ArrowDownLeft, Search } from "lucide-react";
-import { AddTransactionDialog } from "./Dialogs/AddTransactionDialog";
+import { AddTransactionDialog } from "@/components/dashboard/AddTransactionDialog";
 
 const formatDate = (value) => {
   if (!value) return "n/a";

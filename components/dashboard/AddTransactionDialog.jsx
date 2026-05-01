@@ -5,7 +5,7 @@ import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Drawer, DrawerContent } from "@/components/ui/drawer";
 import { X } from "lucide-react";
 import { useIsMobile } from "@/hooks/ui/use-mobile";
-import { TransactionProvider } from "./AddTransaction/context";
+import { TransactionProvider } from "./add-transaction/context";
 import {
   AssetTypeTabs,
   TransactionTypeSelect,
@@ -14,7 +14,7 @@ import {
   CalculatorInputs,
   TransactionDatePicker,
   TransactionFooter,
-} from "./AddTransaction/components";
+} from "./add-transaction/components";
 
 const TransactionFormContent = ({ onClose }) => (
   <div className="flex flex-col h-full">

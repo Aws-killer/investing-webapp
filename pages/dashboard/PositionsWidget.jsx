@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { AddTransactionDialog } from "./Dialogs/AddTransactionDialog";
+import { AddTransactionDialog } from "@/components/dashboard/AddTransactionDialog";
 import { cn } from "@/lib/utils";
 import { ArrowUpRight, ArrowDownRight, Plus, Building2, Wallet, MoreHorizontal, Pencil, Trash2, Banknote, Loader2 } from "lucide-react";
 import { useDashboard } from "@/features/context/dashboard-context";
