@@ -1,8 +1,11 @@
 import { fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 import { getAuthHeader } from "../utils/auth";
 
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_BASE_URL || "https://mbonea-investingtest.hf.space";
+
 const baseQueryWithAuth = fetchBaseQuery({
-  baseUrl: "/api",
+  baseUrl: API_BASE_URL,
   prepareHeaders: (headers, { getState }) => {
     // Prefer token from Redux state (set on login)
     const token = getState().auth?.token;

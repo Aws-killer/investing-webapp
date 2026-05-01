@@ -206,6 +206,95 @@ export const portfoliosApi = createApi({
         { type: "PortfolioPositions", id: portfolioId },
       ],
     }),
+
+    // --- UPDATE HOLDING MUTATIONS ---
+    updateStockHolding: builder.mutation({
+      query: ({ portfolioId, stockId, stockData }) => ({
+        url: `/portfolios/${portfolioId}/stocks/${stockId}`,
+        method: "PUT",
+        body: stockData,
+      }),
+      invalidatesTags: (result, error, { portfolioId }) => [
+        { type: "Transaction", id: "LIST", portfolioId },
+        { type: "PortfolioSummary", id: portfolioId },
+        { type: "PortfolioPerformance", id: portfolioId },
+        { type: "PortfolioCalendar", id: portfolioId },
+        { type: "PortfolioPositions", id: portfolioId },
+      ],
+    }),
+
+    updateFundHolding: builder.mutation({
+      query: ({ portfolioId, fundId, fundData }) => ({
+        url: `/portfolios/${portfolioId}/funds/${fundId}`,
+        method: "PUT",
+        body: fundData,
+      }),
+      invalidatesTags: (result, error, { portfolioId }) => [
+        { type: "Transaction", id: "LIST", portfolioId },
+        { type: "PortfolioSummary", id: portfolioId },
+        { type: "PortfolioPerformance", id: portfolioId },
+        { type: "PortfolioCalendar", id: portfolioId },
+        { type: "PortfolioPositions", id: portfolioId },
+      ],
+    }),
+
+    updateBondHolding: builder.mutation({
+      query: ({ portfolioId, bondId, bondData }) => ({
+        url: `/portfolios/${portfolioId}/bonds/${bondId}`,
+        method: "PUT",
+        body: bondData,
+      }),
+      invalidatesTags: (result, error, { portfolioId }) => [
+        { type: "Transaction", id: "LIST", portfolioId },
+        { type: "PortfolioSummary", id: portfolioId },
+        { type: "PortfolioPerformance", id: portfolioId },
+        { type: "PortfolioCalendar", id: portfolioId },
+        { type: "PortfolioPositions", id: portfolioId },
+      ],
+    }),
+
+    // --- DELETE HOLDING MUTATIONS ---
+    deleteStockHolding: builder.mutation({
+      query: ({ portfolioId, stockId }) => ({
+        url: `/portfolios/${portfolioId}/stocks/${stockId}`,
+        method: "DELETE",
+      }),
+      invalidatesTags: (result, error, { portfolioId }) => [
+        { type: "Transaction", id: "LIST", portfolioId },
+        { type: "PortfolioSummary", id: portfolioId },
+        { type: "PortfolioPerformance", id: portfolioId },
+        { type: "PortfolioCalendar", id: portfolioId },
+        { type: "PortfolioPositions", id: portfolioId },
+      ],
+    }),
+
+    deleteFundHolding: builder.mutation({
+      query: ({ portfolioId, fundId }) => ({
+        url: `/portfolios/${portfolioId}/funds/${fundId}`,
+        method: "DELETE",
+      }),
+      invalidatesTags: (result, error, { portfolioId }) => [
+        { type: "Transaction", id: "LIST", portfolioId },
+        { type: "PortfolioSummary", id: portfolioId },
+        { type: "PortfolioPerformance", id: portfolioId },
+        { type: "PortfolioCalendar", id: portfolioId },
+        { type: "PortfolioPositions", id: portfolioId },
+      ],
+    }),
+
+    deleteBondHolding: builder.mutation({
+      query: ({ portfolioId, bondId }) => ({
+        url: `/portfolios/${portfolioId}/bonds/${bondId}`,
+        method: "DELETE",
+      }),
+      invalidatesTags: (result, error, { portfolioId }) => [
+        { type: "Transaction", id: "LIST", portfolioId },
+        { type: "PortfolioSummary", id: portfolioId },
+        { type: "PortfolioPerformance", id: portfolioId },
+        { type: "PortfolioCalendar", id: portfolioId },
+        { type: "PortfolioPositions", id: portfolioId },
+      ],
+    }),
   }),
 });
 
@@ -226,6 +315,16 @@ export const {
   useSellStockFromPortfolioMutation,
   useSellFundFromPortfolioMutation,
   useSellBondFromPortfolioMutation,
+
+  // Update mutations
+  useUpdateStockHoldingMutation,
+  useUpdateFundHoldingMutation,
+  useUpdateBondHoldingMutation,
+
+  // Delete mutations
+  useDeleteStockHoldingMutation,
+  useDeleteFundHoldingMutation,
+  useDeleteBondHoldingMutation,
 
   // Query hooks
   useGetPortfolioPerformanceQuery,

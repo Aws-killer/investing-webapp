@@ -204,6 +204,13 @@ const AllocationBar = ({ label, pct, color = "bg-white" }) => (
   </div>
 );
 
+const FAQRow = ({ item }) => (
+  <div className="border border-white/10 rounded-xl p-5">
+    <p className="text-sm font-semibold text-white mb-2">{item.question}</p>
+    <p className="text-sm text-white/60 leading-relaxed">{item.answer}</p>
+  </div>
+);
+
 /* ========================== PROFIT OVERLAY ================================ */
 const ProfitOverlay = ({ startPoint, endPoint, containerRef, chartData }) => {
   if (!startPoint || !endPoint || !chartData.length || !containerRef.current)
@@ -748,10 +755,10 @@ const FundPage = () => {
 
         {/* ===== TABS ===== */}
         <div className="flex items-center border-b border-white/10 mb-10 overflow-x-auto">
-          {["overview", "performance", "details", "about"].map((t) => (
+          {["overview", "performance", "details", "about", "faqs"].map((t) => (
             <TabButton
               key={t}
-              label={t.charAt(0).toUpperCase() + t.slice(1)}
+              label={t === "faqs" ? "FAQs" : t.charAt(0).toUpperCase() + t.slice(1)}
               active={tab === t}
               onClick={() => setTab(t)}
             />
@@ -1408,6 +1415,26 @@ const FundPage = () => {
                   </div>
                 )}
               </>
+            )}
+
+            {/* FAQS TAB */}
+            {tab === "faqs" && (
+              <section>
+                <SectionLabel>Frequently Asked Questions</SectionLabel>
+                {info?.faqs?.length > 0 ? (
+                  <div className="space-y-3">
+                    {info.faqs.map((item, i) => (
+                      <FAQRow key={`${item.question}-${i}`} item={item} />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="border border-white/10 rounded-xl p-8 text-center">
+                    <p className="text-white/30 text-sm">
+                      No FAQs available for this fund yet.
+                    </p>
+                  </div>
+                )}
+              </section>
             )}
           </div>
 

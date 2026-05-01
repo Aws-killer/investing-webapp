@@ -1,6 +1,8 @@
 // next.config.mjs
 import withPWA from 'next-pwa';
 
+const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://mbonea-investingtest.hf.space';
+
 const nextConfig = {
   reactStrictMode: true,
 
@@ -8,7 +10,7 @@ const nextConfig = {
     return [
       {
         source: "/api/:path*", // local path
-        destination:"http://127.0.0.1:8000/:path*", // remote API
+        destination: `${apiBaseUrl}/:path*`, // backend API
       },
     ];
   },

@@ -31,6 +31,18 @@ const initialFormState = {
     assetId: "",
     assetSymbol: "",
     assetName: "",
+    addBondFromStatement: false,
+    instrumentType: "TBond",
+    holdingStatus: "FREE",
+    maturityYears: "",
+    maturityDate: "",
+    effectiveDate: "",
+    dtm: "",
+    auctionNumber: "",
+    bondAuctionNumber: "",
+    holdingNumber: "",
+    couponRate: "",
+    secondaryMarket: false,
     quantity: "",
     price: "",
     transactionDate: new Date(),
@@ -164,7 +176,7 @@ export const TransactionProvider = ({ children, isOpen, onOpenChange, portfolioI
     // --- EVENT HANDLERS ---
     const handleTabChange = (type) => {
         if (type.disabled) return;
-        setFormData(prev => ({ ...prev, assetType: type.id, assetId: "", assetSymbol: "", assetName: "", quantity: "", price: "" }));
+        setFormData(prev => ({ ...prev, assetType: type.id, assetId: "", assetSymbol: "", assetName: "", addBondFromStatement: false, secondaryMarket: false, quantity: "", price: "" }));
         setInputByTotal(false);
         setTotalAmountInput("");
     };
@@ -219,7 +231,8 @@ export const TransactionProvider = ({ children, isOpen, onOpenChange, portfolioI
     const isSubmitting = isAddingStock || isAddingFund || isAddingBond || isSellingStock || isSellingFund || isSellingBond;
 
     const submitTransaction = async () => {
-        if (!currentPortfolioId || !formData.assetId) return;
+        const isManualBond = formData.assetType === "BOND" && formData.addBondFromStatement;
+        if (!currentPortfolioId || (!formData.assetId && !isManualBond)) return;
         const basePayload = {
             portfolioId: currentPortfolioId,
             quantity: parseFloat(formData.quantity),
@@ -239,14 +252,36 @@ export const TransactionProvider = ({ children, isOpen, onOpenChange, portfolioI
                     ? addFund({ portfolioId: basePayload.portfolioId, fundData: { fund_id: id, units_held: basePayload.quantity, purchase_price: basePayload.price, purchase_date: basePayload.date } })
                     : sellFund({ portfolioId: basePayload.portfolioId, fundId: id, sellData: { units_to_sell: basePayload.quantity, sell_price: basePayload.price, sell_date: basePayload.date } });
             } else if (formData.assetType === "BOND") {
+                const totalPurchasePrice = parseFloat(totalAmountInput) || ((basePayload.quantity * basePayload.price) / 100);
+                const bondData = {
+                    bond_id: isManualBond ? undefined : (formData.assetId ? id : undefined),
+                    auction_number: formData.auctionNumber ? parseInt(formData.auctionNumber) : undefined,
+                    instrument_type: formData.instrumentType || undefined,
+                    holding_status: formData.holdingStatus || undefined,
+                    notes: formData.secondaryMarket ? "Secondary market purchase" : undefined,
+                    maturity_years: formData.maturityYears || undefined,
+                    maturity_date: formData.maturityDate || undefined,
+                    effective_date: formData.effectiveDate || undefined,
+                    dtm: formData.dtm ? parseInt(formData.dtm) : undefined,
+                    bond_auction_number: formData.bondAuctionNumber ? parseInt(formData.bondAuctionNumber) : undefined,
+                    holding_number: formData.holdingNumber ? parseInt(formData.holdingNumber) : undefined,
+                    coupon_rate: formData.couponRate ? parseFloat(formData.couponRate) : undefined,
+                    face_value_held: basePayload.quantity,
+                    price_per_100: basePayload.price,
+                    purchase_price: totalPurchasePrice,
+                    purchase_date: basePayload.date,
+                };
                 promise = isBuy
-                    ? addBond({ portfolioId: basePayload.portfolioId, bondData: { bond_id: id, face_value_held: basePayload.quantity, purchase_price: basePayload.price, purchase_date: basePayload.date } })
+                    ? addBond({ portfolioId: basePayload.portfolioId, bondData })
                     : sellBond({ portfolioId: basePayload.portfolioId, bondId: id, sellData: { face_value_to_sell: basePayload.quantity, sell_price: basePayload.price, sell_date: basePayload.date } });
             }
-            await promise.unwrap();
+            const response = await promise.unwrap();
+            const recalc = response?.data?.recalculation;
             toast({
                 title: <div className="flex items-center gap-2 text-emerald-400"><Check size={18} /> Success</div>,
-                description: "Transaction added successfully",
+                description: recalc?.requested_start_date
+                    ? `Transaction saved. Portfolio performance is refreshing from ${recalc.requested_start_date}.`
+                    : "Transaction added successfully",
                 className: "bg-card border-border text-foreground",
             });
             onOpenChange(false);

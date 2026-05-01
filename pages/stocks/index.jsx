@@ -2,6 +2,7 @@ import React, { useState, useMemo } from "react";
 import Link from "next/link";
 import { useGetStocksQuery } from "@/features/api/stocksApi";
 import { TrendingUp, TrendingDown, Search, RefreshCw } from "lucide-react";
+import { getStockLogoUrl } from "@/lib/stockLogos";
 
 const cn = (...c) => c.filter(Boolean).join(" ");
 
@@ -29,6 +30,32 @@ const SkeletonRow = () => (
     </div>
   </div>
 );
+
+const StockLogo = ({ stock }) => {
+  const [failed, setFailed] = useState(false);
+  const logoUrl = getStockLogoUrl(stock?.symbol, stock?.logo_url);
+
+  if (!logoUrl || failed) {
+    return (
+      <div className="h-9 w-9 rounded-lg bg-muted flex items-center justify-center shrink-0 overflow-hidden">
+        <span className="text-[10px] font-bold text-muted-foreground">
+          {stock.symbol.slice(0, 3)}
+        </span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="h-9 w-9 rounded-lg bg-white flex items-center justify-center shrink-0 overflow-hidden border border-border/60">
+      <img
+        src={logoUrl}
+        alt={`${stock.symbol} logo`}
+        className="h-full w-full object-contain"
+        onError={() => setFailed(true)}
+      />
+    </div>
+  );
+};
 
 export default function StocksPage() {
   const { data: stocks = [], isLoading, isFetching, refetch } = useGetStocksQuery();
@@ -100,11 +127,7 @@ export default function StocksPage() {
                     className="flex items-center justify-between px-4 py-3.5 bg-card hover:bg-muted/50 transition active:scale-[.99]"
                   >
                     <div className="flex items-center gap-3">
-                      <div className="h-9 w-9 rounded-lg bg-muted flex items-center justify-center shrink-0">
-                        <span className="text-[10px] font-bold text-muted-foreground">
-                          {stock.symbol.slice(0, 3)}
-                        </span>
-                      </div>
+                      <StockLogo stock={stock} />
                       <div>
                         <p className="text-[13px] font-semibold leading-tight">{stock.symbol}</p>
                         <p className="text-[11px] text-muted-foreground truncate max-w-[160px] sm:max-w-xs">

@@ -1,5 +1,12 @@
 // components/NavItems.jsx
-import { IconHome, IconBriefcase, IconTrendingUp, IconChartPie, IconBuildingBank } from "@tabler/icons-react";
+import {
+  IconHome,
+  IconBriefcase,
+  IconTrendingUp,
+  IconChartPie,
+  IconBuildingBank,
+  IconUserCircle,
+} from "@tabler/icons-react";
 
 export const navItems = [
   {
@@ -28,5 +35,11 @@ export const navItems = [
     name: "Bonds",
     link: "/bonds",
     icon: <IconBuildingBank className="h-4 w-4" />,
+  },
+  {
+    name: "Profile",
+    link: "/profile",
+    icon: <IconUserCircle className="h-4 w-4" />,
+    requiresAuth: true,
   },
 ];

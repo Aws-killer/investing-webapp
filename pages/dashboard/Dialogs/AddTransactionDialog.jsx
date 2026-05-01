@@ -10,6 +10,7 @@ import {
   AssetTypeTabs,
   TransactionTypeSelect,
   AssetSearch,
+  BondStatementFields,
   CalculatorInputs,
   TransactionDatePicker,
   TransactionFooter,
@@ -31,6 +32,7 @@ const TransactionFormContent = ({ onClose }) => (
     </div>
     <div className="px-5 py-4 space-y-4 overflow-y-auto flex-1">
       <TransactionTypeSelect />
+      <BondStatementFields />
       <AssetSearch />
       <CalculatorInputs />
       <TransactionDatePicker />

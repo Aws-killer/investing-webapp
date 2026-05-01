@@ -23,7 +23,9 @@ import {
   useGetStockPricesQuery,
   useGetStockMetricsQuery,
   useGetStockDividendsQuery,
+  useGetCorporateActionsQuery,
 } from "@/features/api/stocksApi";
+import { getStockLogoUrl } from "@/lib/stockLogos";
 
 /* ================================ CONSTANTS ============================== */
 const PERIODS = ["1M", "6M", "YTD", "1Y", "Max"];
@@ -71,6 +73,30 @@ const annualize = (totalReturnPct, years) => {
   const factor = 1 + totalReturnPct / 100;
   if (factor <= 0) return null;
   return (Math.pow(factor, 1 / years) - 1) * 100;
+};
+
+const StockIdentityLogo = ({ symbol, logoUrl }) => {
+  const [failed, setFailed] = useState(false);
+  const displayLogoUrl = getStockLogoUrl(symbol, logoUrl);
+
+  if (!displayLogoUrl || failed) {
+    return (
+      <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/5 text-sm font-bold text-white/50">
+        {symbol?.slice(0, 4) || "STK"}
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-white/10 bg-white p-2">
+      <img
+        src={displayLogoUrl}
+        alt={`${symbol} logo`}
+        className="h-full w-full object-contain"
+        onError={() => setFailed(true)}
+      />
+    </div>
+  );
 };
 
 /* ========================== SHARED COMPONENTS ============================ */
@@ -149,6 +175,41 @@ const PerfRow = ({ label, value }) => {
     </div>
   );
 };
+
+const CorporateActionRow = ({ action }) => (
+  <div className="flex items-start justify-between gap-4 p-4 border-b border-white/5 last:border-0">
+    <div className="min-w-0">
+      <p className="text-sm font-medium text-white">
+        {action.headline || `${action.symbol} corporate action`}
+      </p>
+      <p className="mt-1 text-xs uppercase tracking-wide text-white/40">
+        {action.action_type || "Corporate Action"}
+      </p>
+      <div className="mt-2 space-y-1 text-xs text-white/50">
+        {action.announcement_date && <p>Announced: {fmtDate(action.announcement_date)}</p>}
+        {action.books_closure_date && <p>Books closure: {fmtDate(action.books_closure_date)}</p>}
+        {action.payment_date && <p>Payment: {fmtDate(action.payment_date)}</p>}
+      </div>
+    </div>
+    <div className="shrink-0 text-right">
+      {action.dividend_amount != null && (
+        <p className="text-sm font-semibold text-white">
+          TZS {fmt(action.dividend_amount, { decimals: 4 })}
+        </p>
+      )}
+      {action.document_url && (
+        <a
+          href={action.document_url}
+          target="_blank"
+          rel="noreferrer"
+          className="mt-2 inline-flex text-xs font-medium text-white/70 underline-offset-4 hover:text-white hover:underline"
+        >
+          View document
+        </a>
+      )}
+    </div>
+  </div>
+);
 
 /* ========================== PROFIT OVERLAY ================================ */
 const ProfitOverlay = ({ startPoint, endPoint, containerRef, chartData }) => {
@@ -343,6 +404,10 @@ const StockPage = () => {
 
   const { data: metrics } = useGetStockMetricsQuery(symbol, { skip: !symbol });
   const { data: dividends = [] } = useGetStockDividendsQuery(symbol, { skip: !symbol });
+  const { data: corporateActions = [] } = useGetCorporateActionsQuery(
+    { symbol, limit: 20 },
+    { skip: !symbol },
+  );
 
   /* ── Derive stock from list ── */
   const stock = useMemo(
@@ -358,6 +423,7 @@ const StockPage = () => {
     volume,
     market_cap,
     name = symbol,
+    logo_url,
   } = stock || {};
 
   /* ── Chart data ascending for selected period ── */
@@ -463,19 +529,22 @@ const StockPage = () => {
         {/* ===== HEADER ===== */}
         <header className="mb-10">
           <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-6 mb-8">
-            <div className="min-w-0">
-              <div className="flex flex-wrap items-center gap-2 mb-2">
-                <span className="text-xs px-2 py-0.5 bg-white/10 rounded text-white/60">
-                  {symbol}
-                </span>
-                <span className="text-xs px-2 py-0.5 bg-white/5 rounded text-white/40">
-                  Dar es Salaam Stock Exchange
-                </span>
+            <div className="flex min-w-0 items-start gap-4">
+              <StockIdentityLogo symbol={symbol} logoUrl={logo_url} />
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2 mb-2">
+                  <span className="text-xs px-2 py-0.5 bg-white/10 rounded text-white/60">
+                    {symbol}
+                  </span>
+                  <span className="text-xs px-2 py-0.5 bg-white/5 rounded text-white/40">
+                    Dar es Salaam Stock Exchange
+                  </span>
+                </div>
+                <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight mb-2">
+                  {name}
+                </h1>
+                <p className="text-white/40 text-sm">DSE Listed Equity</p>
               </div>
-              <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight mb-2">
-                {name}
-              </h1>
-              <p className="text-white/40 text-sm">DSE Listed Equity</p>
             </div>
 
             <div className="flex items-center gap-3">
@@ -675,6 +744,20 @@ const StockPage = () => {
                     </div>
                   </section>
                 )}
+
+                {corporateActions.length > 0 && (
+                  <section>
+                    <SectionLabel>Corporate Actions</SectionLabel>
+                    <div className="border border-white/10 rounded-xl divide-y divide-white/5">
+                      {corporateActions.slice(0, 5).map((action) => (
+                        <CorporateActionRow
+                          key={`${action.symbol}-${action.announcement_date || action.payment_date || action.document_url || action.headline}`}
+                          action={action}
+                        />
+                      ))}
+                    </div>
+                  </section>
+                )}
               </>
             )}
 
@@ -815,6 +898,20 @@ const StockPage = () => {
                             </p>
                           </div>
                         </div>
+                      ))}
+                    </div>
+                  </section>
+                )}
+
+                {corporateActions.length > 0 && (
+                  <section>
+                    <SectionLabel>Corporate Actions</SectionLabel>
+                    <div className="border border-white/10 rounded-xl divide-y divide-white/5">
+                      {corporateActions.map((action) => (
+                        <CorporateActionRow
+                          key={`${action.symbol}-${action.announcement_date || action.payment_date || action.document_url || action.headline}`}
+                          action={action}
+                        />
                       ))}
                     </div>
                   </section>

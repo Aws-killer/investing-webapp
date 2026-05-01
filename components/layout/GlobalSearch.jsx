@@ -5,8 +5,36 @@ import { Search, TrendingUp, PieChart, Loader2, ChevronRight } from 'lucide-reac
 import { motion, AnimatePresence } from 'framer-motion';
 import { useGetStocksQuery } from '@/features/api/stocksApi';
 import { useGetFundsQuery } from '@/features/api/fundsApi';
+import { getStockLogoUrl } from '@/lib/stockLogos';
 
 const cn = (...classes) => classes.filter(Boolean).join(" ");
+
+const ResultAvatar = ({ result }) => {
+  const [failed, setFailed] = useState(false);
+  const logoUrl = result.type === 'stock' ? getStockLogoUrl(result.symbol, result.logo_url) : null;
+
+  if (logoUrl && !failed) {
+    return (
+      <div className="h-8 w-8 rounded-lg bg-white border border-border/70 flex items-center justify-center shrink-0 overflow-hidden">
+        <img
+          src={logoUrl}
+          alt={`${result.symbol} logo`}
+          className="h-full w-full object-contain"
+          onError={() => setFailed(true)}
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div className={cn(
+      "h-8 w-8 rounded-lg flex items-center justify-center shrink-0",
+      result.type === 'stock' ? "bg-blue-500/10 text-blue-400" : "bg-purple-500/10 text-purple-400"
+    )}>
+      {result.type === 'stock' ? <TrendingUp size={16} /> : <PieChart size={16} />}
+    </div>
+  );
+};
 
 export const GlobalSearch = ({ className, placeholder = "Search stocks, funds...", onNavigate }) => {
   const router = useRouter();
@@ -110,12 +138,7 @@ export const GlobalSearch = ({ className, placeholder = "Search stocks, funds...
                     className="w-full px-3 py-2.5 flex items-center justify-between hover:bg-zinc-800/80 transition-colors group/item text-left"
                   >
                     <div className="flex items-center gap-3">
-                      <div className={cn(
-                        "h-8 w-8 rounded-lg flex items-center justify-center shrink-0",
-                        result.type === 'stock' ? "bg-blue-500/10 text-blue-400" : "bg-purple-500/10 text-purple-400"
-                      )}>
-                        {result.type === 'stock' ? <TrendingUp size={16} /> : <PieChart size={16} />}
-                      </div>
+                      <ResultAvatar result={result} />
                       <div>
                         <div className="flex items-center gap-2">
                           <span className="font-medium text-zinc-200">{result.symbol}</span>

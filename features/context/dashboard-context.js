@@ -14,6 +14,7 @@ import {
   useGetPortfolioPerformanceQuery, // Import new hook
   useGetPortfolioCalendarQuery, // Import new hook
 } from "@/features/api/portfoliosApi";
+import { useGetMarketHighlightsQuery } from "@/features/api/stocksApi";
 
 const DashboardContext = createContext(null);
 
@@ -52,6 +53,7 @@ export const DashboardProvider = ({ children }) => {
     isLoading: isLoadingPerformance,
     isFetching: isFetchingPerformance,
     error: performanceError,
+    refetch: refetchPerformance,
   } = useGetPortfolioPerformanceQuery(
     { portfolioId: selectedPortfolioId, period: timeframe },
     { skip: !selectedPortfolioId }
@@ -101,6 +103,27 @@ export const DashboardProvider = ({ children }) => {
     [positionsApiResponse]
   );
 
+  const {
+    data: marketHighlightsApiResponse,
+    isLoading: isLoadingMarketHighlights,
+    error: marketHighlightsError,
+    refetch: refetchMarketHighlights,
+  } = useGetMarketHighlightsQuery({ limit: 6 });
+
+  const marketHighlights = useMemo(
+    () =>
+      marketHighlightsApiResponse || {
+        trading_date: null,
+        updated_at: null,
+        overview: {},
+        top_gainers: [],
+        top_losers: [],
+        most_active: [],
+        corporate_actions: [],
+      },
+    [marketHighlightsApiResponse]
+  );
+
   const selectedPortfolio = useMemo(() => {
     return portfolios.find((p) => p.id === selectedPortfolioId);
   }, [portfolios, selectedPortfolioId]);
@@ -112,7 +135,9 @@ export const DashboardProvider = ({ children }) => {
     if (!performanceApiResponse) {
       return {
         isPending: false,
+        isRecalculating: false,
         pendingMessage: null,
+        recalculation: null,
         currentValue: 0,
         changeValue: 0,
         changePercentage: 0,
@@ -121,9 +146,12 @@ export const DashboardProvider = ({ children }) => {
     }
     // Handle the case where the backend is generating data
     if (performanceApiResponse.success === false) {
+      const recalculation = performanceApiResponse.data?.recalculation || null;
       return {
         isPending: true,
+        isRecalculating: true,
         pendingMessage: performanceApiResponse.message,
+        recalculation,
         currentValue: 0,
         changeValue: 0,
         changePercentage: 0,
@@ -131,9 +159,12 @@ export const DashboardProvider = ({ children }) => {
       };
     }
     const data = performanceApiResponse.data;
+    const recalculation = data?.recalculation || null;
     return {
       isPending: false,
-      pendingMessage: null,
+      isRecalculating: Boolean(recalculation),
+      pendingMessage: recalculation?.message || null,
+      recalculation,
       currentValue: parseFloat(data.current_value) || 0,
       changeValue: parseFloat(data.change_value) || 0,
       changePercentage: parseFloat(data.change_percentage) || 0,
@@ -143,6 +174,16 @@ export const DashboardProvider = ({ children }) => {
       })),
     };
   }, [performanceApiResponse]);
+
+  useEffect(() => {
+    if (!selectedPortfolioId || !performanceData.isRecalculating) return undefined;
+
+    const timer = setInterval(() => {
+      refetchPerformance();
+    }, 5000);
+
+    return () => clearInterval(timer);
+  }, [selectedPortfolioId, performanceData.isRecalculating, refetchPerformance]);
 
   // The primary total value now comes from the performance endpoint.
   const totalPortfolioValue = performanceData.currentValue;
@@ -243,12 +284,17 @@ export const DashboardProvider = ({ children }) => {
     isLoadingPerformance,
     isFetchingPerformance,
     performanceError,
+    refetchPerformance,
     calendarEvents,
     isLoadingCalendar,
     calendarError,
     positions,
     isLoadingPositions,
     positionsError,
+    marketHighlights,
+    isLoadingMarketHighlights,
+    marketHighlightsError,
+    refetchMarketHighlights,
   };
 
   return (

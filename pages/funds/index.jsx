@@ -6,7 +6,7 @@ import {
   useCompareFundsQuery,
 } from "@/features/api/fundsApi";
 import {
-  RefreshCw, GitCompare, X, Star, AlertTriangle, Info,
+  RefreshCw, GitCompare, X, Star, AlertTriangle, Info, Plus, Trash2,
 } from "lucide-react";
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -61,72 +61,18 @@ const parseAmount = (s) => {
 
 /* ─── CONSTANTS ─────────────────────────────────────────────────────────── */
 const DATE_PRESETS = [
-  { label: "1M", days: 30 },
-  { label: "3M", days: 90 },
-  { label: "6M", days: 180 },
-  { label: "1Y", days: 365 },
-  { label: "3Y", days: 365 * 3 },
+  { label: "1M",  days: 30 },
+  { label: "3M",  days: 90 },
+  { label: "6M",  days: 180 },
+  { label: "1Y",  days: 365 },
+  { label: "3Y",  days: 365 * 3 },
   { label: "Max", days: null },
 ];
 
-const DIST_FREQ = [
-  { label: "None",      value: 0  },
-  { label: "Annual",    value: 1  },
-  { label: "Semi-ann.", value: 2  },
-  { label: "Quarterly", value: 4  },
-  { label: "Monthly",   value: 12 },
-];
-
-// Per-fund distribution constraints + plan conditions from offer documents
-const FUND_DIST_CONFIG = {
-  "Bond Fund": {
-    freqOptions: [0, 2, 12],
-    freqLabels:  { 0: "Reinvest", 2: "Semi-ann.", 12: "Monthly" },
-    planConditions: {
-      0:  { label: "Reinvestment Plan",              minInitial: 50_000,     minAdditional: 5_000, exitFee: null },
-      2:  { label: "Semi-annual Distribution Plan",  minInitial: 5_000_000,  minAdditional: 5_000, exitFee: null },
-      12: { label: "Monthly Distribution Plan",      minInitial: 10_000_000, minAdditional: 5_000, exitFee: null },
-    },
-    hint: "Typically TZS 1.00/unit/month for the monthly plan. Check your fund statement for the declared rate.",
-    defaultPerUnit: "1",
-  },
-  "Jikimu Fund": {
-    freqOptions: [0, 1, 4],
-    freqLabels:  { 0: "Capital Growth", 1: "Annual Dividend", 4: "Quarterly Dividend" },
-    planConditions: {
-      0: { label: "Capital Growth Plan",    minInitial: 5_000,     minAdditional: 5_000,  exitFee: null },
-      1: { label: "Annual Dividend Plan",   minInitial: 1_000_000, minAdditional: 15_000, exitFee: null },
-      4: { label: "Quarterly Dividend Plan",minInitial: 2_000_000, minAdditional: 15_000, exitFee: null },
-    },
-    hint: "Max 16% p.a. (4%/quarter). Enter the declared per-unit amount from your fund statement.",
-    defaultPerUnit: "",
-  },
-  "iIncome": {
-    freqOptions: [0, 2],
-    freqLabels:  { 0: "Reinvest", 2: "Semi-ann." },
-    planConditions: {
-      0: { label: "Reinvestment",           minInitial: 10_000_000, minAdditional: 100_000, exitFee: "1% of NAV" },
-      2: { label: "Semi-annual Income",     minInitial: 10_000_000, minAdditional: 100_000, exitFee: "1% of NAV" },
-    },
-    hint: "Semi-annual at manager's discretion. Enter the declared per-unit amount from your fund statement.",
-    defaultPerUnit: "",
-  },
-  "Imaan": {
-    freqOptions: [0, 2],
-    freqLabels:  { 0: "Reinvest", 2: "Semi-ann." },
-    planConditions: {
-      0: { label: "Reinvestment",       minInitial: 100_000, minAdditional: 10_000, exitFee: "1% of NAV" },
-      2: { label: "Semi-annual Income", minInitial: 100_000, minAdditional: 10_000, exitFee: "1% of NAV" },
-    },
-    hint: "Semi-annual distribution. Enter the declared per-unit amount from your fund statement.",
-    defaultPerUnit: "",
-  },
-};
-
 const PERF_TABS = [
-  { id: "weekly_return", label: "1W", navKey: "week_nav" },
-  { id: "monthly_return", label: "1M", navKey: "month_nav" },
-  { id: "ytd_return", label: "YTD", navKey: "ytd_nav" },
+  { id: "weekly_return",  label: "1W",  navKey: "week_nav"  },
+  { id: "monthly_return", label: "1M",  navKey: "month_nav" },
+  { id: "ytd_return",     label: "YTD", navKey: "ytd_nav"   },
 ];
 
 const FUND_COLORS = [
@@ -141,6 +87,40 @@ const TYPE_COLOR = {
   Balanced:       "text-purple-400 bg-purple-400/10",
   Islamic:        "text-teal-400 bg-teal-400/10",
 };
+
+const DCA_FREQS = [
+  { label: "Monthly",    value: "monthly",    months: 1  },
+  { label: "Bi-monthly", value: "bimonthly",  months: 2  },
+  { label: "Quarterly",  value: "quarterly",  months: 3  },
+  { label: "Semi-ann.",  value: "semiannual", months: 6  },
+  { label: "Annual",     value: "annual",     months: 12 },
+];
+
+function distributionConfigFor(fund) {
+  const info = fund?.info ?? {};
+  const options = fund?.income_options ?? info.income_options ?? info.distribution?.options ?? [];
+  if (!options.length) return null;
+
+  return {
+    freqOptions: options.map((option) => option.frequency_per_year),
+    freqLabels: options.reduce((acc, option) => {
+      acc[option.frequency_per_year] = option.frequency_label || option.label;
+      return acc;
+    }, {}),
+    planConditions: options.reduce((acc, option) => {
+      acc[option.frequency_per_year] = {
+        label: option.label,
+        minInitial: option.min_initial,
+        minAdditional: option.min_additional,
+        exitFee: option.exit_fee === "None" ? null : option.exit_fee,
+        description: option.description,
+      };
+      return acc;
+    }, {}),
+    hint: info.distribution?.policy || "Enter the declared per-unit distribution from the fund statement.",
+    defaultPerUnit: fund?.name === "Bond Fund" ? "1" : "",
+  };
+}
 
 /* ─── MERGE CHART SERIES ─────────────────────────────────────────────────── */
 function mergeSeriesData(funds) {
@@ -244,26 +224,48 @@ function AllFundsTab() {
         <div key={manager}>
           <SectionLabel>{manager}</SectionLabel>
           <div className="space-y-1.5">
-            {items.map((fund) => (
-              <Link
-                key={fund.id}
-                href={`/funds/${fund.id}`}
-                className="flex items-center justify-between px-4 py-4 rounded-2xl bg-white/[0.03] border border-white/[0.06] hover:bg-white/[0.06] transition"
-              >
-                <div>
-                  <p className="text-[14px] font-semibold text-white">{fund.name}</p>
-                  <span className={cn("text-[10px] px-2 py-0.5 rounded-full font-medium mt-1 inline-block", TYPE_COLOR[fund.fund_type] || "text-white/40 bg-white/5")}>
-                    {fund.fund_type}
-                  </span>
-                </div>
-                <div className="text-right">
-                  <p className="text-[15px] font-bold text-white">
-                    {fmt(fund.nav_per_unit, 4)}
-                  </p>
-                  <p className="text-[10px] text-white/30 mt-0.5">{fund.currency} / unit</p>
-                </div>
-              </Link>
-            ))}
+            {items.map((fund) => {
+              const info = fund.info ?? {};
+              const minInitial = info.contributions?.min_initial ?? info.min_initial ?? fund.min_initial;
+              const minInitialNote = info.contributions?.min_initial_note ?? info.min_initial_note;
+              const settlement = info.liquidity?.settlement;
+              const risk = info.risk_level ?? fund.risk_level;
+
+              return (
+                <Link
+                  key={fund.id}
+                  href={`/funds/${fund.id}`}
+                  className="flex items-center justify-between gap-4 px-4 py-4 rounded-2xl bg-white/[0.03] border border-white/[0.06] hover:bg-white/[0.06] transition"
+                >
+                  <div className="min-w-0">
+                    <p className="text-[14px] font-semibold text-white">{fund.name}</p>
+                    <div className="flex flex-wrap gap-1.5 mt-1.5">
+                      <span className={cn("text-[10px] px-2 py-0.5 rounded-full font-medium", TYPE_COLOR[fund.fund_type] || "text-white/40 bg-white/5")}>
+                        {fund.fund_type}
+                      </span>
+                      {risk && (
+                        <span className="text-[10px] px-2 py-0.5 rounded-full font-medium text-white/50 bg-white/5">
+                          {risk} risk
+                        </span>
+                      )}
+                      {fund.pays_income && (
+                        <span className="text-[10px] px-2 py-0.5 rounded-full font-medium text-emerald-300 bg-emerald-400/10">
+                          Income options
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-[10px] text-white/30 mt-2">
+                      Min {minInitialNote || (minInitial ? fmtMoney(minInitial, fund.currency, true) : "not stated")}
+                      {settlement ? ` - ${settlement} redemption` : ""}
+                    </p>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <p className="text-[15px] font-bold text-white">{fmt(fund.nav_per_unit, 4)}</p>
+                    <p className="text-[10px] text-white/30 mt-0.5">{fund.currency} / unit</p>
+                  </div>
+                </Link>
+              );
+            })}
           </div>
         </div>
       ))}
@@ -305,10 +307,7 @@ function PerformanceTab({ periodKey, navKey }) {
           >
             <div
               className="absolute left-0 top-0 bottom-0 rounded-2xl opacity-[0.06]"
-              style={{
-                width: `${barW}%`,
-                backgroundColor: pos ? "#10b981" : "#ef4444",
-              }}
+              style={{ width: `${barW}%`, backgroundColor: pos ? "#10b981" : "#ef4444" }}
             />
             <div className="flex items-center gap-3 relative z-10">
               <span className="text-[11px] font-bold text-white/20 w-5">#{rank + 1}</span>
@@ -333,6 +332,13 @@ function PerformanceTab({ periodKey, navKey }) {
 }
 
 /* ─── COMPARE TAB ───────────────────────────────────────────────────────── */
+
+function advanceByMonths(date, months) {
+  const d = new Date(date);
+  d.setMonth(d.getMonth() + months);
+  return d;
+}
+
 function CompareTab({ allFunds }) {
   const today = new Date().toISOString().slice(0, 10);
   const oneYearAgo = new Date(Date.now() - 365 * 86400000).toISOString().slice(0, 10);
@@ -345,20 +351,29 @@ function CompareTab({ allFunds }) {
   const [committed, setCommitted] = useState(null);
   const [activePreset, setActivePreset] = useState("1Y");
 
-  // Investment amount
+  // Investment mode
+  const [investMode, setInvestMode] = useState("lumpsum"); // "lumpsum" | "dca" | "manual"
+
+  // Lump sum
   const [investAmountStr, setInvestAmountStr] = useState("");
   const investAmount = useMemo(() => parseAmount(investAmountStr), [investAmountStr]);
 
+  // DCA
+  const [dcaAmountStr, setDcaAmountStr] = useState("");
+  const [dcaFreq, setDcaFreq] = useState("monthly");
+  const [dcaStart, setDcaStart] = useState(oneYearAgo);
+  const dcaAmount = useMemo(() => parseAmount(dcaAmountStr), [dcaAmountStr]);
+
+  // Manual transactions
+  const [transactions, setTransactions] = useState([{ id: 1, date: "", amountStr: "" }]);
+
   // Per-fund distribution settings: { [fundId]: { freq: number, perUnitStr: string } }
   const [distSettings, setDistSettings] = useState({});
-
   const getDistForFund = (id) => distSettings[id] ?? { freq: 0, perUnitStr: "" };
   const setDistForFund = (id, key, val) =>
     setDistSettings((prev) => ({ ...prev, [id]: { ...getDistForFund(id), [key]: val } }));
 
   /* ── Derived ── */
-  const canCompare = selectedIds.length >= 2 && fromDate && toDate;
-
   const grouped = useMemo(() => {
     const m = {};
     allFunds.forEach((f) => {
@@ -368,6 +383,45 @@ function CompareTab({ allFunds }) {
     });
     return m;
   }, [allFunds]);
+
+  // DCA: generate transaction list from start to today
+  const dcaTxList = useMemo(() => {
+    if (investMode !== "dca" || !dcaAmount || !dcaStart) return [];
+    const freq = DCA_FREQS.find((f) => f.value === dcaFreq) ?? DCA_FREQS[0];
+    const txs = [];
+    let d = new Date(dcaStart);
+    const end = new Date(toDate || today);
+    while (d <= end && txs.length < 600) {
+      txs.push({ id: txs.length, date: d.toISOString().slice(0, 10), amountStr: dcaAmountStr });
+      d = advanceByMonths(d, freq.months);
+    }
+    return txs;
+  }, [investMode, dcaAmount, dcaAmountStr, dcaFreq, dcaStart, toDate, today]);
+
+  // Effective transaction list (DCA or manual)
+  const effectiveTxList = useMemo(() => {
+    if (investMode === "dca")    return dcaTxList;
+    if (investMode === "manual") return transactions.filter((t) => t.date && parseAmount(t.amountStr));
+    return [];
+  }, [investMode, dcaTxList, transactions]);
+
+  const totalTxInvested = useMemo(
+    () => effectiveTxList.reduce((s, t) => s + (parseAmount(t.amountStr) ?? 0), 0),
+    [effectiveTxList],
+  );
+  const earliestTxDate = useMemo(
+    () => effectiveTxList.length
+      ? [...effectiveTxList].sort((a, b) => a.date.localeCompare(b.date))[0].date
+      : null,
+    [effectiveTxList],
+  );
+
+  const canCompare = useMemo(() => {
+    if (selectedIds.length < 2) return false;
+    if (investMode === "lumpsum")  return !!(fromDate && toDate);
+    if (investMode === "dca")      return !!(dcaAmount && dcaStart);
+    return effectiveTxList.length >= 1;
+  }, [selectedIds, investMode, fromDate, toDate, dcaAmount, dcaStart, effectiveTxList]);
 
   /* ── API ── */
   const { data: compareData, isLoading, isFetching } = useCompareFundsQuery(
@@ -379,98 +433,171 @@ function CompareTab({ allFunds }) {
   const chartData = useMemo(() => (funds.length ? mergeSeriesData(funds) : []), [funds]);
   const benchmark = funds.find((f) => f.id === benchmarkId);
 
-  /* ── Fee + distribution calculations ── */
+  /* ── NAV lookup: date → raw NAV using indexed series ── */
+  const navOnDate = (priceData, startNav, targetDate) => {
+    // priceData sorted ascending. indexed=100 at startNav date.
+    let entry = null;
+    for (const p of priceData) {
+      if (p.date <= targetDate) entry = p;
+      else break;
+    }
+    if (!entry) return null;
+    return (entry.indexed / 100) * startNav;
+  };
+
+  /* ── Lump-sum calc (uses start_nav / end_nav directly) ── */
   const fundCalc = useMemo(() => {
     const map = {};
     for (const f of funds) {
       const meta = allFunds.find((x) => x.id === f.id);
-      if (!meta || !meta.nav_per_unit) {
-        map[f.id] = {};
-        continue;
-      }
+      if (!meta || !meta.nav_per_unit) { map[f.id] = {}; continue; }
 
-      const nav    = meta.nav_per_unit;
-      const sale   = meta.sale_price ?? nav;
+      const nav        = meta.nav_per_unit;
+      const sale       = meta.sale_price ?? nav;
       const repurchase = meta.repurchase_price ?? nav;
-
-      // Entry / exit ratios (1.0 = no fee, 0.99 = 1% exit fee, etc.)
       const entryRatio = sale / nav;
       const exitRatio  = repurchase / nav;
       const feeDrag    = exitRatio / entryRatio;
-
-      const exitFeePct  = Math.max(0, (1 - exitRatio) * 100);
-      const entryFeePct = Math.max(0, (entryRatio - 1) * 100);
-
-      // Gross NAV return
+      const exitFeePct = Math.max(0, (1 - exitRatio) * 100);
+      const years      = (f.days ?? 0) / 365.25;
       const grossMultiple = f.total_return != null ? 1 + f.total_return / 100 : null;
 
-      // Period in years
-      const years = (f.days ?? 0) / 365.25;
-
-      // ── Money simulation ──
-      let units = null, navGain = null, distTotal = null, exitFeeAmt = null,
+      let units = null, distTotal = null, exitFeeAmt = null,
           endValue = null, netProfit = null, netReturn = null, netAnn = null;
 
       if (investAmount && f.start_nav && f.end_nav) {
-        // Units purchased: invest ÷ (start_nav × entryRatio)
         units = investAmount / (f.start_nav * entryRatio);
-
-        // NAV gain before exit fee
         const grossEndValue = units * f.end_nav;
-
-        // Exit fee amount deducted on redemption
         exitFeeAmt = grossEndValue * (1 - exitRatio);
-
-        // Final value from units after exit
         const netEndValue = grossEndValue * exitRatio;
 
-        // Distributions: per-fund settings
         const dist = getDistForFund(f.id);
         const distPerUnit = parseAmount(dist.perUnitStr);
         const numPayments = meta.pays_income && dist.freq > 0 && distPerUnit
-          ? Math.floor(dist.freq * years)
-          : 0;
+          ? Math.floor(dist.freq * years) : 0;
         distTotal = units * (distPerUnit ?? 0) * numPayments;
 
-        navGain   = netEndValue - investAmount;
         endValue  = netEndValue + distTotal;
         netProfit = endValue - investAmount;
         netReturn = (netProfit / investAmount) * 100;
-
-        // Annualize
-        if (years >= 0.08 && endValue > 0) {
-          netAnn = (Math.pow(endValue / investAmount, 1 / years) - 1) * 100;
-        } else {
-          netAnn = netReturn;
-        }
+        netAnn = years >= 0.08 && endValue > 0
+          ? (Math.pow(endValue / investAmount, 1 / years) - 1) * 100 : netReturn;
       } else if (grossMultiple != null) {
-        // No money entered — just show fee-adjusted % return
         const netMultiple = grossMultiple * feeDrag;
         netReturn = (netMultiple - 1) * 100;
-        netAnn = years >= 0.08
-          ? (Math.pow(netMultiple, 1 / years) - 1) * 100
-          : netReturn;
+        netAnn = years >= 0.08 ? (Math.pow(netMultiple, 1 / years) - 1) * 100 : netReturn;
       }
 
       map[f.id] = {
-        units, navGain, distTotal, exitFeeAmt, endValue,
-        netProfit, netReturn, netAnn,
-        exitFeePct, entryFeePct, feeDrag,
+        units, distTotal, exitFeeAmt, endValue, netProfit, netReturn, netAnn,
+        exitFeePct, feeDrag,
         currency: meta.currency ?? f.currency ?? "TZS",
         paysIncome: meta.pays_income,
+        totalInvested: investAmount,
       };
     }
     return map;
   }, [funds, allFunds, investAmount, distSettings]);
 
+  /* ── Transaction-based calc (DCA + manual) ── */
+  const txCalc = useMemo(() => {
+    if (investMode === "lumpsum" || !effectiveTxList.length || !funds.length) return {};
+    const map = {};
+    const endDateStr = committed?.to ?? today;
+
+    for (const f of funds) {
+      const meta = allFunds.find((x) => x.id === f.id);
+      if (!meta || !f.start_nav || !f.end_nav || !f.data?.length) {
+        map[f.id] = { error: "No price data", currency: meta?.currency ?? "TZS", paysIncome: meta?.pays_income };
+        continue;
+      }
+
+      const nav        = meta.nav_per_unit;
+      const sale       = meta.sale_price ?? nav;
+      const repurchase = meta.repurchase_price ?? nav;
+      const entryRatio = sale / nav;
+      const exitRatio  = repurchase / nav;
+      const exitFeePct = Math.max(0, (1 - exitRatio) * 100);
+      const sorted     = [...f.data].sort((a, b) => a.date.localeCompare(b.date));
+
+      const dist        = getDistForFund(f.id);
+      const distPerUnit = parseAmount(dist.perUnitStr);
+
+      let totalUnits = 0, totalInvested = 0, totalDistributions = 0;
+      const txDetails = [];
+
+      for (const tx of effectiveTxList) {
+        const amount = parseAmount(tx.amountStr);
+        if (!amount || !tx.date) continue;
+
+        const rawNav = navOnDate(sorted, f.start_nav, tx.date);
+        if (!rawNav) {
+          txDetails.push({ date: tx.date, amount, nav: null, units: null });
+          continue;
+        }
+
+        const units = amount / (rawNav * entryRatio);
+        totalUnits    += units;
+        totalInvested += amount;
+
+        // Per-transaction distribution: count payments from tx date to end
+        if (meta.pays_income && dist.freq > 0 && distPerUnit) {
+          const txYears = (new Date(endDateStr) - new Date(tx.date)) / (365.25 * 86400000);
+          const numPayments = Math.max(0, Math.floor(dist.freq * txYears));
+          totalDistributions += units * distPerUnit * numPayments;
+        }
+
+        txDetails.push({ date: tx.date, amount, nav: rawNav, units });
+      }
+
+      if (totalUnits === 0 || totalInvested === 0) {
+        map[f.id] = {
+          error: "No transactions matched price history",
+          exitFeePct, currency: meta.currency ?? "TZS",
+          paysIncome: meta.pays_income, txDetails,
+        };
+        continue;
+      }
+
+      const grossEndValue = totalUnits * f.end_nav;
+      const exitFeeAmt    = grossEndValue * (1 - exitRatio);
+      const netEndValue   = grossEndValue * exitRatio;
+      const distTotal     = totalDistributions;
+      const endValue      = netEndValue + distTotal;
+      const netProfit     = endValue - totalInvested;
+      const netReturn     = (netProfit / totalInvested) * 100;
+
+      // Annualise from earliest matched tx to end
+      const firstMatchedTx = txDetails.find((t) => t.nav != null);
+      const years = firstMatchedTx
+        ? (new Date(endDateStr) - new Date(firstMatchedTx.date)) / (365.25 * 86400000)
+        : (f.days ?? 0) / 365.25;
+      const netAnn = years >= 0.08 && endValue > 0
+        ? (Math.pow(endValue / totalInvested, 1 / years) - 1) * 100 : netReturn;
+
+      map[f.id] = {
+        totalUnits, totalInvested, grossEndValue, exitFeeAmt, netEndValue,
+        distTotal, endValue, netProfit, netReturn, netAnn,
+        exitFeePct, exitRatio,
+        currency: meta.currency ?? f.currency ?? "TZS",
+        paysIncome: meta.pays_income,
+        txDetails,
+        skipped: txDetails.filter((t) => !t.nav).length,
+      };
+    }
+    return map;
+  }, [investMode, effectiveTxList, funds, allFunds, distSettings, committed, today]);
+
+  const activeCalc = investMode === "lumpsum" ? fundCalc : txCalc;
+
   /* ── Sorted results ── */
   const sortedFunds = useMemo(
     () => [...funds].sort(
       (a, b) =>
-        (fundCalc[b.id]?.netReturn ?? b.total_return ?? -Infinity) -
-        (fundCalc[a.id]?.netReturn ?? a.total_return ?? -Infinity),
+        (activeCalc[b.id]?.netReturn ?? b.total_return ?? -Infinity) -
+        (activeCalc[a.id]?.netReturn ?? a.total_return ?? -Infinity),
     ),
-    [funds, fundCalc],
+    [funds, activeCalc],
   );
   const topId = sortedFunds[0]?.id;
 
@@ -492,9 +619,25 @@ function CompareTab({ allFunds }) {
 
   const handleCompare = () => {
     if (!canCompare) return;
-    setCommitted({ ids: [...selectedIds], from: fromDate, to: toDate });
+    let from = fromDate, to = toDate;
+    if (investMode === "dca") {
+      from = dcaStart;
+      to   = today;
+    } else if (investMode === "manual" && earliestTxDate) {
+      from = earliestTxDate;
+      to   = today;
+    }
+    setCommitted({ ids: [...selectedIds], from, to });
   };
 
+  const addTx = () =>
+    setTransactions((prev) => [...prev, { id: Date.now(), date: "", amountStr: "" }]);
+  const removeTx = (id) =>
+    setTransactions((prev) => prev.length > 1 ? prev.filter((t) => t.id !== id) : prev);
+  const updateTx = (id, key, val) =>
+    setTransactions((prev) => prev.map((t) => t.id === id ? { ...t, [key]: val } : t));
+
+  /* ── RENDER ── */
   return (
     <div className="space-y-4">
 
@@ -523,9 +666,7 @@ function CompareTab({ allFunds }) {
                     >
                       {f.name}
                       {f.pays_income && (
-                        <span className={cn("text-[9px]", sel ? "text-black/60" : "text-white/30")}>
-                          ↗
-                        </span>
+                        <span className={cn("text-[9px]", sel ? "text-black/60" : "text-white/30")}>↗</span>
                       )}
                     </button>
                   );
@@ -535,7 +676,6 @@ function CompareTab({ allFunds }) {
           ))}
         </div>
 
-        {/* Selected chips */}
         {selectedIds.length > 0 && (
           <div className="mt-4 pt-4 border-t border-white/[0.06] flex flex-wrap gap-2">
             {selectedIds.map((id, idx) => {
@@ -567,86 +707,243 @@ function CompareTab({ allFunds }) {
         )}
       </div>
 
-      {/* ── STEP 2: Investment amount ── */}
-      <div className="rounded-2xl bg-white/[0.03] border border-white/[0.06] p-5">
-        <SectionLabel>Your investment (optional)</SectionLabel>
-        <div className="relative">
-          <input
-            type="text"
-            inputMode="numeric"
-            value={investAmountStr}
-            onChange={(e) => setInvestAmountStr(e.target.value)}
-            placeholder="0"
-            className="w-full bg-transparent text-4xl font-bold text-white placeholder-white/10 focus:outline-none pb-2 border-b border-white/10 focus:border-white/30 transition-colors"
-          />
-          <span className="absolute right-0 bottom-2.5 text-sm text-white/30 font-medium">TZS</span>
-        </div>
-        <div className="flex gap-2 mt-4 flex-wrap">
-          {[50000, 100000, 500000, 1000000, 5000000].map((a) => (
-            <button
-              key={a}
-              onClick={() => setInvestAmountStr(a.toLocaleString())}
-              className="h-7 px-3 rounded-full text-[11px] font-semibold bg-white/[0.05] hover:bg-white/10 text-white/50 hover:text-white transition border border-white/[0.06]"
-            >
-              {fmtCompact(a)}
-            </button>
-          ))}
-        </div>
-        {investAmount && investAmount < 50000 && (
-          <Warning>Most funds require a minimum initial investment of TZS 50,000 or higher. Please check each fund's minimum before investing.</Warning>
-        )}
-      </div>
-
-
-      {/* ── STEP 4: Period + Compare ── */}
-      <div className="rounded-2xl bg-white/[0.03] border border-white/[0.06] p-5 space-y-4">
+      {/* ── STEP 2: Investment method + inputs ── */}
+      <div className="rounded-2xl bg-white/[0.03] border border-white/[0.06] p-5 space-y-5">
         <div>
-          <p className="text-[11px] text-white/40 mb-3">Comparison period</p>
-          <div className="flex flex-wrap gap-2">
-            {DATE_PRESETS.map((p) => (
-              <Pill
-                key={p.label}
-                active={activePreset === p.label}
-                onClick={() => applyPreset(p.label, p.days)}
+          <SectionLabel>Investment method</SectionLabel>
+          <div className="flex gap-1.5 flex-wrap">
+            {[
+              { id: "lumpsum", label: "Lump sum"     },
+              { id: "dca",     label: "Recurring DCA" },
+              { id: "manual",  label: "Transactions"  },
+            ].map((m) => (
+              <button
+                key={m.id}
+                onClick={() => setInvestMode(m.id)}
+                className={cn(
+                  "h-8 px-3.5 rounded-full text-[12px] font-semibold transition border",
+                  investMode === m.id
+                    ? "bg-white text-black border-transparent"
+                    : "border-white/10 text-white/40 hover:text-white",
+                )}
               >
-                {p.label}
-              </Pill>
+                {m.label}
+              </button>
             ))}
           </div>
         </div>
 
-        <div className="flex flex-col sm:flex-row gap-3 items-end">
-          <div className="flex gap-3 flex-1 w-full">
-            <div className="flex-1">
-              <p className="text-[10px] text-white/30 uppercase tracking-widest mb-1.5">From</p>
+        {/* Lump sum */}
+        {investMode === "lumpsum" && (
+          <div>
+            <div className="relative">
+              <input
+                type="text"
+                inputMode="numeric"
+                value={investAmountStr}
+                onChange={(e) => setInvestAmountStr(e.target.value)}
+                placeholder="0"
+                className="w-full bg-transparent text-4xl font-bold text-white placeholder-white/10 focus:outline-none pb-2 border-b border-white/10 focus:border-white/30 transition-colors"
+              />
+              <span className="absolute right-0 bottom-2.5 text-sm text-white/30 font-medium">TZS</span>
+            </div>
+            <div className="flex gap-2 mt-4 flex-wrap">
+              {[50000, 100000, 500000, 1000000, 5000000].map((a) => (
+                <button
+                  key={a}
+                  onClick={() => setInvestAmountStr(a.toLocaleString())}
+                  className="h-7 px-3 rounded-full text-[11px] font-semibold bg-white/[0.05] hover:bg-white/10 text-white/50 hover:text-white transition border border-white/[0.06]"
+                >
+                  {fmtCompact(a)}
+                </button>
+              ))}
+            </div>
+            {investAmount != null && investAmount < 50000 && (
+              <div className="mt-3">
+                <Warning>Most funds require a minimum of TZS 50,000. Check each fund's minimum before investing.</Warning>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* DCA / Recurring */}
+        {investMode === "dca" && (
+          <div className="space-y-4">
+            <div>
+              <p className="text-[11px] text-white/40 mb-2">Amount per period (TZS)</p>
+              <div className="relative">
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  value={dcaAmountStr}
+                  onChange={(e) => setDcaAmountStr(e.target.value)}
+                  placeholder="0"
+                  className="w-full bg-transparent text-3xl font-bold text-white placeholder-white/10 focus:outline-none pb-2 border-b border-white/10 focus:border-white/30 transition-colors"
+                />
+                <span className="absolute right-0 bottom-2.5 text-sm text-white/30">TZS</span>
+              </div>
+              <div className="flex gap-2 mt-3 flex-wrap">
+                {[10000, 50000, 100000, 500000].map((a) => (
+                  <button
+                    key={a}
+                    onClick={() => setDcaAmountStr(a.toLocaleString())}
+                    className="h-7 px-3 rounded-full text-[11px] font-semibold bg-white/[0.05] hover:bg-white/10 text-white/50 hover:text-white transition border border-white/[0.06]"
+                  >
+                    {fmtCompact(a)}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <p className="text-[11px] text-white/40 mb-2">Frequency</p>
+              <div className="flex flex-wrap gap-1.5">
+                {DCA_FREQS.map((f) => (
+                  <button
+                    key={f.value}
+                    onClick={() => setDcaFreq(f.value)}
+                    className={cn(
+                      "h-8 px-3.5 rounded-full text-[12px] font-semibold transition border",
+                      dcaFreq === f.value
+                        ? "bg-white text-black border-transparent"
+                        : "border-white/10 text-white/40 hover:text-white",
+                    )}
+                  >
+                    {f.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <p className="text-[11px] text-white/40 mb-1.5">Start date</p>
               <input
                 type="date"
-                value={fromDate}
-                max={toDate}
-                onChange={(e) => { setFromDate(e.target.value); setActivePreset(null); }}
-                className="w-full h-10 px-3 text-[13px] bg-white/[0.05] border border-white/10 rounded-xl text-white focus:outline-none focus:border-white/30 transition"
+                value={dcaStart}
+                max={today}
+                onChange={(e) => setDcaStart(e.target.value)}
+                className="h-10 px-3 text-[13px] bg-white/[0.05] border border-white/10 rounded-xl text-white focus:outline-none focus:border-white/30 transition"
               />
             </div>
-            <div className="flex-1">
-              <p className="text-[10px] text-white/30 uppercase tracking-widest mb-1.5">To</p>
-              <input
-                type="date"
-                value={toDate}
-                min={fromDate}
-                max={today}
-                onChange={(e) => { setToDate(e.target.value); setActivePreset(null); }}
-                className="w-full h-10 px-3 text-[13px] bg-white/[0.05] border border-white/10 rounded-xl text-white focus:outline-none focus:border-white/30 transition"
-              />
+
+            {dcaTxList.length > 0 && (
+              <Notice>
+                {dcaTxList.length} payments of {fmtMoney(dcaAmount, "TZS")} = {fmtMoney(totalTxInvested, "TZS")} total
+                · first {dcaTxList[0].date} · last {dcaTxList[dcaTxList.length - 1].date}
+              </Notice>
+            )}
+          </div>
+        )}
+
+        {/* Manual transactions */}
+        {investMode === "manual" && (
+          <div className="space-y-3">
+            <div className="space-y-2">
+              {transactions.map((tx, i) => (
+                <div key={tx.id} className="flex gap-2 items-center">
+                  <div className="text-[10px] text-white/20 w-4 text-right shrink-0">{i + 1}</div>
+                  <input
+                    type="date"
+                    value={tx.date}
+                    max={today}
+                    onChange={(e) => updateTx(tx.id, "date", e.target.value)}
+                    className="flex-1 h-9 px-3 text-[12px] bg-white/[0.05] border border-white/10 rounded-xl text-white focus:outline-none focus:border-white/30 transition"
+                  />
+                  <div className="relative flex-1">
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      value={tx.amountStr}
+                      onChange={(e) => updateTx(tx.id, "amountStr", e.target.value)}
+                      placeholder="Amount"
+                      className="w-full h-9 px-3 pr-10 text-[12px] bg-white/[0.05] border border-white/10 rounded-xl text-white placeholder-white/20 focus:outline-none focus:border-white/30 transition"
+                    />
+                    <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[9px] text-white/25">TZS</span>
+                  </div>
+                  <button
+                    onClick={() => removeTx(tx.id)}
+                    disabled={transactions.length === 1}
+                    className="p-2 text-white/20 hover:text-red-400 disabled:opacity-0 transition"
+                  >
+                    <Trash2 size={13} />
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            <button
+              onClick={addTx}
+              className="flex items-center gap-1.5 h-8 px-3 rounded-xl text-[12px] font-semibold border border-dashed border-white/15 text-white/30 hover:text-white hover:border-white/30 transition"
+            >
+              <Plus size={12} /> Add transaction
+            </button>
+
+            {effectiveTxList.length > 0 && (
+              <Notice>
+                {effectiveTxList.length} transaction{effectiveTxList.length > 1 ? "s" : ""} · {fmtMoney(totalTxInvested, "TZS")} total invested
+              </Notice>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* ── STEP 3: Period (lumpsum) + Compare ── */}
+      <div className="rounded-2xl bg-white/[0.03] border border-white/[0.06] p-5 space-y-4">
+        {investMode === "lumpsum" && (
+          <div className="space-y-3">
+            <div>
+              <p className="text-[11px] text-white/40 mb-3">Comparison period</p>
+              <div className="flex flex-wrap gap-2">
+                {DATE_PRESETS.map((p) => (
+                  <Pill key={p.label} active={activePreset === p.label} onClick={() => applyPreset(p.label, p.days)}>
+                    {p.label}
+                  </Pill>
+                ))}
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <div className="flex-1">
+                <p className="text-[10px] text-white/30 uppercase tracking-widest mb-1.5">From</p>
+                <input
+                  type="date"
+                  value={fromDate}
+                  max={toDate}
+                  onChange={(e) => { setFromDate(e.target.value); setActivePreset(null); }}
+                  className="w-full h-10 px-3 text-[13px] bg-white/[0.05] border border-white/10 rounded-xl text-white focus:outline-none focus:border-white/30 transition"
+                />
+              </div>
+              <div className="flex-1">
+                <p className="text-[10px] text-white/30 uppercase tracking-widest mb-1.5">To</p>
+                <input
+                  type="date"
+                  value={toDate}
+                  min={fromDate}
+                  max={today}
+                  onChange={(e) => { setToDate(e.target.value); setActivePreset(null); }}
+                  className="w-full h-10 px-3 text-[13px] bg-white/[0.05] border border-white/10 rounded-xl text-white focus:outline-none focus:border-white/30 transition"
+                />
+              </div>
             </div>
           </div>
-          <button
-            onClick={handleCompare}
-            disabled={!canCompare || isFetching}
-            className="h-10 px-6 bg-white text-black text-[13px] font-bold rounded-xl hover:bg-white/90 transition disabled:opacity-20 whitespace-nowrap"
-          >
-            {isFetching ? "Loading…" : "Compare →"}
-          </button>
-        </div>
+        )}
+
+        {investMode !== "lumpsum" && (
+          <Notice>
+            {investMode === "dca" && dcaStart
+              ? `Comparison period: ${dcaStart} → ${today} (from DCA start date)`
+              : investMode === "manual" && earliestTxDate
+              ? `Comparison period: ${earliestTxDate} → ${today} (from earliest transaction)`
+              : "Add investments above to set the comparison period."}
+          </Notice>
+        )}
+
+        <button
+          onClick={handleCompare}
+          disabled={!canCompare || isFetching}
+          className="w-full h-11 bg-white text-black text-[13px] font-bold rounded-xl hover:bg-white/90 transition disabled:opacity-20"
+        >
+          {isFetching ? "Loading…" : "Compare →"}
+        </button>
       </div>
 
       {/* ── Empty state ── */}
@@ -660,9 +957,7 @@ function CompareTab({ allFunds }) {
       )}
 
       {isLoading && (
-        <div className="h-48 flex items-center justify-center text-white/30 text-sm">
-          Loading…
-        </div>
+        <div className="h-48 flex items-center justify-center text-white/30 text-sm">Loading…</div>
       )}
 
       {/* ── Results ── */}
@@ -670,11 +965,14 @@ function CompareTab({ allFunds }) {
         <>
           {/* Chart */}
           <div className="rounded-2xl bg-white/[0.03] border border-white/[0.06] p-5">
-            <p className="text-[13px] font-semibold text-white mb-1">
-              NAV performance
-            </p>
+            <p className="text-[13px] font-semibold text-white mb-1">NAV performance</p>
             <p className="text-[10px] text-white/30 mb-5">
               Indexed to 100 at start · {committed?.from} → {committed?.to} · gross (pre-fee)
+              {investMode === "dca" && dcaTxList.length > 0
+                ? ` · ${dcaTxList.length}× ${DCA_FREQS.find((f) => f.value === dcaFreq)?.label?.toLowerCase()} DCA`
+                : investMode === "manual" && effectiveTxList.length > 0
+                ? ` · ${effectiveTxList.length} manual transactions`
+                : ""}
             </p>
             <ResponsiveContainer width="100%" height={220}>
               <LineChart data={chartData} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
@@ -716,20 +1014,32 @@ function CompareTab({ allFunds }) {
           {/* Fund result cards */}
           <div className="space-y-3">
             <SectionLabel>
-              {investAmount ? "Investment simulation" : "Return comparison"} — net of fees
+              {investMode === "lumpsum"
+                ? investAmount ? "Investment simulation" : "Return comparison"
+                : investMode === "dca"
+                ? `DCA · ${fmtMoney(dcaAmount, "TZS")} ${DCA_FREQS.find((f) => f.value === dcaFreq)?.label?.toLowerCase()}`
+                : `Portfolio · ${effectiveTxList.length} transactions`}
+              {" — net of fees"}
             </SectionLabel>
 
-            {sortedFunds.map((f, rank) => {
-              const calc = fundCalc[f.id] ?? {};
-              const isTop = f.id === topId;
-              const isBench = f.id === benchmarkId;
-              const color = FUND_COLORS[selectedIds.indexOf(f.id)];
-              const netRet = calc.netReturn ?? (f.total_return ? f.total_return * (calc.feeDrag ?? 1) : null);
-              const pos = netRet != null && netRet >= 0;
+            {sortedFunds.map((f) => {
+              const calc     = activeCalc[f.id] ?? {};
+              const isTop    = f.id === topId && !calc.error;
+              const isBench  = f.id === benchmarkId;
+              const color    = FUND_COLORS[selectedIds.indexOf(f.id)];
+              const netRet   = calc.netReturn ?? (f.total_return != null ? f.total_return * (calc.feeDrag ?? 1) : null);
+              const pos      = netRet != null && netRet >= 0;
+              const hasAmt   = calc.endValue != null;
+              const invested = calc.totalInvested ?? (investMode === "lumpsum" ? investAmount : null);
 
-              // Bar width relative to best fund
-              const maxNet = Math.max(...sortedFunds.map(x => Math.abs(fundCalc[x.id]?.netReturn ?? x.total_return ?? 0)), 0.01);
-              const barW = netRet != null ? (Math.abs(netRet) / maxNet) * 100 : 0;
+              const maxNet = Math.max(...sortedFunds.map((x) => Math.abs(activeCalc[x.id]?.netReturn ?? x.total_return ?? 0)), 0.01);
+              const barW   = netRet != null ? (Math.abs(netRet) / maxNet) * 100 : 0;
+
+              const meta       = allFunds.find((x) => x.id === f.id);
+              const distConfig = distributionConfigFor(meta);
+              const distSetting = getDistForFund(f.id);
+              const plan       = distConfig?.planConditions?.[distSetting.freq];
+              const distPerUnitVal = parseAmount(distSetting.perUnitStr);
 
               return (
                 <div
@@ -739,12 +1049,11 @@ function CompareTab({ allFunds }) {
                     isTop ? "border-white/20 bg-white/[0.05]" : "border-white/[0.06] bg-white/[0.02]",
                   )}
                 >
-                  {/* Color bar on left */}
                   <div className="flex">
                     <div className="w-1 shrink-0 rounded-l-2xl" style={{ backgroundColor: color }} />
                     <div className="flex-1 p-4">
 
-                      {/* Header row */}
+                      {/* Header */}
                       <div className="flex items-start justify-between gap-4 mb-3">
                         <div>
                           <div className="flex items-center gap-2 flex-wrap">
@@ -768,167 +1077,171 @@ function CompareTab({ allFunds }) {
                           <p className="text-[10px] text-white/30 mt-0.5">{f.manager_name}</p>
                         </div>
 
-                        {/* Big return number */}
                         <div className="text-right shrink-0">
-                          {investAmount && calc.endValue != null ? (
+                          {hasAmt ? (
                             <>
-                              <p className="text-[18px] font-bold text-white">
-                                {fmtMoney(calc.endValue, calc.currency)}
-                              </p>
+                              <p className="text-[18px] font-bold text-white">{fmtMoney(calc.endValue, calc.currency)}</p>
                               <p className={cn("text-[12px] font-semibold", pos ? "text-emerald-400" : "text-red-400")}>
                                 {calc.netProfit >= 0 ? "+" : ""}{fmtMoney(calc.netProfit, calc.currency, true)}
                                 <span className="text-[10px] font-normal ml-1">({fmtPct(netRet)})</span>
                               </p>
                             </>
                           ) : (
-                            <p className={cn("text-[22px] font-bold", pos ? "text-emerald-400" : "text-red-400")}>
-                              {netRet != null ? fmtPct(netRet) : "—"}
+                            <p className={cn("text-[22px] font-bold", calc.error ? "text-white/20" : pos ? "text-emerald-400" : "text-red-400")}>
+                              {calc.error ? "—" : netRet != null ? fmtPct(netRet) : "—"}
                             </p>
                           )}
                         </div>
                       </div>
 
-                      {/* Return bar */}
-                      <div className="h-1 bg-white/[0.06] rounded-full overflow-hidden mb-3">
-                        <div
-                          className="h-full rounded-full transition-all"
-                          style={{ width: `${barW}%`, backgroundColor: pos ? "#34d399" : "#f87171" }}
-                        />
-                      </div>
-
-                      {/* Breakdown row */}
-                      <div className="flex flex-wrap gap-x-5 gap-y-1 text-[10px]">
-                        <div>
-                          <span className="text-white/30">Gross NAV </span>
-                          <span className="text-white/60 font-medium">{fmtPct(f.total_return, true)}</span>
+                      {calc.error && (
+                        <div className="mb-3">
+                          <Notice>{calc.error}. Transactions before this fund's earliest available price are skipped.</Notice>
                         </div>
-                        {calc.exitFeePct > 0 && (
-                          <div>
-                            <span className="text-white/30">Exit fee drag </span>
-                            <span className="text-amber-400 font-medium">−{((1 - (calc.feeDrag ?? 1)) * 100).toFixed(2)}pp</span>
-                          </div>
-                        )}
-                        {calc.distTotal != null && calc.distTotal > 0 && (
-                          <div>
-                            <span className="text-white/30">Distributions </span>
-                            <span className="text-emerald-400 font-medium">+{fmtMoney(calc.distTotal, calc.currency, true)}</span>
-                          </div>
-                        )}
-                        {calc.exitFeeAmt != null && calc.exitFeeAmt > 0.01 && (
-                          <div>
-                            <span className="text-white/30">Exit fee paid </span>
-                            <span className="text-amber-400 font-medium">−{fmtMoney(calc.exitFeeAmt, calc.currency, true)}</span>
-                          </div>
-                        )}
-                        {calc.units != null && (
-                          <div>
-                            <span className="text-white/30">Units </span>
-                            <span className="text-white/60 font-medium">
-                              {new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 }).format(calc.units)}
-                            </span>
-                          </div>
-                        )}
-                        <div>
-                          <span className="text-white/30">Ann. return </span>
-                          <span className={cn("font-medium", calc.netAnn != null ? calc.netAnn >= 0 ? "text-emerald-400" : "text-red-400" : "text-white/30")}>
-                            {calc.netAnn != null ? fmtPct(calc.netAnn) : "—"}
-                          </span>
-                        </div>
-                        {f.start_nav != null && f.end_nav != null && (
-                          <div>
-                            <span className="text-white/30">NAV </span>
-                            <span className="text-white/60 font-medium">
-                              {f.currency} {fmt(f.start_nav, 4)} → {fmt(f.end_nav, 4)}
-                            </span>
-                          </div>
-                        )}
-                      </div>
+                      )}
 
-                      {/* Per-fund distribution controls (income funds only) */}
-                      {(() => {
-                        const meta = allFunds.find((x) => x.id === f.id);
-                        const distConfig = meta?.pays_income ? FUND_DIST_CONFIG[meta.name] : null;
-                        if (!distConfig) return null;
-                        const distSetting = getDistForFund(f.id);
-                        const plan = distConfig.planConditions?.[distSetting.freq];
-                        const distPerUnitVal = parseAmount(distSetting.perUnitStr);
-                        return (
-                          <div className="mt-3 pt-3 border-t border-white/[0.06] space-y-3">
-                            {/* Plan selector */}
+                      {!calc.error && (
+                        <>
+                          <div className="h-1 bg-white/[0.06] rounded-full overflow-hidden mb-3">
+                            <div
+                              className="h-full rounded-full transition-all"
+                              style={{ width: `${barW}%`, backgroundColor: pos ? "#34d399" : "#f87171" }}
+                            />
+                          </div>
+
+                          <div className="flex flex-wrap gap-x-5 gap-y-1 text-[10px]">
                             <div>
-                              <p className="text-[10px] text-white/30 uppercase tracking-widest mb-2">Distribution plan</p>
-                              <div className="flex flex-wrap gap-1.5">
-                                {distConfig.freqOptions.map((val) => (
-                                  <button
-                                    key={val}
-                                    onClick={() => setDistForFund(f.id, "freq", val)}
-                                    className={cn(
-                                      "h-7 px-3 rounded-full text-[11px] font-semibold transition border",
-                                      distSetting.freq === val
-                                        ? "bg-white text-black border-transparent"
-                                        : "border-white/10 text-white/40 hover:text-white",
-                                    )}
-                                  >
-                                    {distConfig.freqLabels[val]}
-                                  </button>
-                                ))}
+                              <span className="text-white/30">Gross NAV </span>
+                              <span className="text-white/60 font-medium">{fmtPct(f.total_return, true)}</span>
+                            </div>
+                            {calc.exitFeePct > 0 && (
+                              <div>
+                                <span className="text-white/30">Exit fee drag </span>
+                                <span className="text-amber-400 font-medium">
+                                  −{((1 - (calc.exitRatio ?? calc.feeDrag ?? 1)) * 100).toFixed(2)}pp
+                                </span>
+                              </div>
+                            )}
+                            {calc.distTotal != null && calc.distTotal > 0 && (
+                              <div>
+                                <span className="text-white/30">Distributions </span>
+                                <span className="text-emerald-400 font-medium">+{fmtMoney(calc.distTotal, calc.currency, true)}</span>
+                              </div>
+                            )}
+                            {calc.exitFeeAmt != null && calc.exitFeeAmt > 0.01 && (
+                              <div>
+                                <span className="text-white/30">Exit fee paid </span>
+                                <span className="text-amber-400 font-medium">−{fmtMoney(calc.exitFeeAmt, calc.currency, true)}</span>
+                              </div>
+                            )}
+                            {invested != null && (
+                              <div>
+                                <span className="text-white/30">Invested </span>
+                                <span className="text-white/60 font-medium">{fmtMoney(invested, calc.currency, true)}</span>
+                              </div>
+                            )}
+                            {(calc.units ?? calc.totalUnits) != null && (
+                              <div>
+                                <span className="text-white/30">Units </span>
+                                <span className="text-white/60 font-medium">
+                                  {new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 }).format(calc.units ?? calc.totalUnits)}
+                                </span>
+                              </div>
+                            )}
+                            <div>
+                              <span className="text-white/30">Ann. return </span>
+                              <span className={cn("font-medium", calc.netAnn != null
+                                ? calc.netAnn >= 0 ? "text-emerald-400" : "text-red-400"
+                                : "text-white/30")}>
+                                {calc.netAnn != null ? fmtPct(calc.netAnn) : "—"}
+                              </span>
+                            </div>
+                            {f.start_nav != null && f.end_nav != null && (
+                              <div>
+                                <span className="text-white/30">NAV </span>
+                                <span className="text-white/60 font-medium">
+                                  {f.currency} {fmt(f.start_nav, 4)} → {fmt(f.end_nav, 4)}
+                                </span>
+                              </div>
+                            )}
+                            {calc.skipped > 0 && (
+                              <div>
+                                <span className="text-amber-400/70">{calc.skipped} tx outside data range</span>
+                              </div>
+                            )}
+                          </div>
+                        </>
+                      )}
+
+                      {/* Per-fund distribution controls */}
+                      {distConfig && !calc.error && (
+                        <div className="mt-3 pt-3 border-t border-white/[0.06] space-y-3">
+                          <div>
+                            <p className="text-[10px] text-white/30 uppercase tracking-widest mb-2">Distribution plan</p>
+                            <div className="flex flex-wrap gap-1.5">
+                              {distConfig.freqOptions.map((val) => (
+                                <button
+                                  key={val}
+                                  onClick={() => setDistForFund(f.id, "freq", val)}
+                                  className={cn(
+                                    "h-7 px-3 rounded-full text-[11px] font-semibold transition border",
+                                    distSetting.freq === val
+                                      ? "bg-white text-black border-transparent"
+                                      : "border-white/10 text-white/40 hover:text-white",
+                                  )}
+                                >
+                                  {distConfig.freqLabels[val]}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+
+                          {plan && (
+                            <div className="flex flex-wrap gap-x-4 gap-y-1 text-[10px]">
+                              <div>
+                                <span className="text-white/30">Min investment </span>
+                                <span className="text-white/60 font-medium">{fmtMoney(plan.minInitial, meta.currency ?? "TZS")}</span>
+                              </div>
+                              <div>
+                                <span className="text-white/30">Min top-up </span>
+                                <span className="text-white/60 font-medium">{fmtMoney(plan.minAdditional, meta.currency ?? "TZS")}</span>
+                              </div>
+                              <div>
+                                <span className="text-white/30">Exit fee </span>
+                                {plan.exitFee
+                                  ? <span className="text-amber-400 font-medium">{plan.exitFee}</span>
+                                  : <span className="text-emerald-400 font-medium">None</span>}
                               </div>
                             </div>
+                          )}
 
-                            {/* Plan conditions */}
-                            {plan && (
-                              <div className="flex flex-wrap gap-x-4 gap-y-1 text-[10px]">
-                                <div>
-                                  <span className="text-white/30">Min investment </span>
-                                  <span className="text-white/60 font-medium">{fmtMoney(plan.minInitial, meta.currency ?? "TZS")}</span>
-                                </div>
-                                <div>
-                                  <span className="text-white/30">Min top-up </span>
-                                  <span className="text-white/60 font-medium">{fmtMoney(plan.minAdditional, meta.currency ?? "TZS")}</span>
-                                </div>
-                                {plan.exitFee && (
-                                  <div>
-                                    <span className="text-white/30">Exit fee </span>
-                                    <span className="text-amber-400 font-medium">{plan.exitFee}</span>
-                                  </div>
-                                )}
-                                {!plan.exitFee && (
-                                  <div>
-                                    <span className="text-white/30">Exit fee </span>
-                                    <span className="text-emerald-400 font-medium">None</span>
-                                  </div>
-                                )}
-                              </div>
-                            )}
+                          {plan && invested && invested < plan.minInitial && (
+                            <Warning>
+                              {plan.label} requires a minimum of {fmtMoney(plan.minInitial, meta.currency ?? "TZS")}. Your total investment is below this threshold.
+                            </Warning>
+                          )}
 
-                            {/* Minimum investment warning */}
-                            {plan && investAmount && investAmount < plan.minInitial && (
-                              <Warning>
-                                The {plan.label} requires a minimum of {fmtMoney(plan.minInitial, meta.currency ?? "TZS")}. Your investment amount is below this threshold.
-                              </Warning>
-                            )}
-
-                            {/* Per-unit input (only for distribution plans) */}
-                            {distSetting.freq > 0 && (
-                              <div>
-                                <p className="text-[10px] text-white/30 mb-1.5">Distribution per unit per payment (TZS)</p>
-                                <input
-                                  type="text"
-                                  inputMode="numeric"
-                                  value={distSetting.perUnitStr}
-                                  onChange={(e) => setDistForFund(f.id, "perUnitStr", e.target.value)}
-                                  placeholder={distConfig.defaultPerUnit || "e.g. 1.00"}
-                                  className="w-full sm:w-44 bg-white/[0.05] border border-white/10 rounded-xl px-3 py-2 text-[13px] text-white placeholder-white/20 focus:outline-none focus:border-white/30 transition"
-                                />
-                                <p className="text-[10px] text-white/25 mt-1.5">{distConfig.hint}</p>
-                                {distSetting.freq > 0 && !distPerUnitVal && (
-                                  <p className="text-[10px] text-amber-400/60 mt-1">Enter an amount to include distributions in the simulation.</p>
-                                )}
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })()}
+                          {distSetting.freq > 0 && (
+                            <div>
+                              <p className="text-[10px] text-white/30 mb-1.5">Distribution per unit per payment (TZS)</p>
+                              <input
+                                type="text"
+                                inputMode="numeric"
+                                value={distSetting.perUnitStr}
+                                onChange={(e) => setDistForFund(f.id, "perUnitStr", e.target.value)}
+                                placeholder={distConfig.defaultPerUnit || "e.g. 1.00"}
+                                className="w-full sm:w-44 bg-white/[0.05] border border-white/10 rounded-xl px-3 py-2 text-[13px] text-white placeholder-white/20 focus:outline-none focus:border-white/30 transition"
+                              />
+                              <p className="text-[10px] text-white/25 mt-1.5">{distConfig.hint}</p>
+                              {!distPerUnitVal && (
+                                <p className="text-[10px] text-amber-400/60 mt-1">
+                                  Enter an amount to include distributions in the simulation.
+                                </p>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -942,8 +1255,8 @@ function CompareTab({ allFunds }) {
               <SectionLabel>vs {benchmark.name}</SectionLabel>
               <div className="space-y-2">
                 {funds.filter((f) => f.id !== benchmarkId).map((f) => {
-                  const fNet = fundCalc[f.id]?.netReturn ?? f.total_return;
-                  const bNet = fundCalc[benchmark.id]?.netReturn ?? benchmark.total_return;
+                  const fNet = activeCalc[f.id]?.netReturn ?? f.total_return;
+                  const bNet = activeCalc[benchmark.id]?.netReturn ?? benchmark.total_return;
                   const diff = fNet != null && bNet != null ? fNet - bNet : null;
                   return (
                     <div key={f.id} className="flex items-center justify-between py-2 border-b border-white/[0.05] last:border-0">
@@ -959,20 +1272,23 @@ function CompareTab({ allFunds }) {
                   );
                 })}
               </div>
-              <p className="text-[10px] text-white/20 mt-3">
-                pp = percentage points over period · net of each fund's exit fee
-              </p>
+              <p className="text-[10px] text-white/20 mt-3">pp = percentage points · net of each fund's exit fee</p>
             </div>
           )}
 
-          {/* Disclaimer block */}
+          {/* Disclaimers */}
           <div className="space-y-2">
             <Notice>
-              Net Return uses current repurchase price as a proxy for exit fees over the full period. Actual exit fees may differ if you redeem at different NAV levels.
+              Exit fees use the current repurchase price as a proxy. Actual fees depend on NAV at time of redemption.
             </Notice>
             <Notice>
-              For income distribution funds, distributions are modelled using a fixed per-unit rate. Actual declared distributions vary and are not guaranteed.
+              Distribution amounts are estimates using a fixed per-unit rate. Actual declared distributions vary and are not guaranteed.
             </Notice>
+            {investMode !== "lumpsum" && (
+              <Notice>
+                NAV on each transaction date is looked up from the price series for the comparison period. Transactions before a fund's earliest available price are skipped.
+              </Notice>
+            )}
             <Notice>
               Past performance does not guarantee future results. Always read the fund's offer document before investing.
             </Notice>

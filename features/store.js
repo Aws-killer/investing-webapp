@@ -16,6 +16,7 @@ import { portfoliosApi } from "./api/portfoliosApi";
 import { usersApi } from "./api/usersApi";
 import { bondsApi } from "./api/bondsApi";
 import { fundsApi } from "./api/fundsApi";
+import { adminApi } from "./api/adminApi";
 import authReducer from "./slices/authSlice";
 
 const persistConfig = {
@@ -34,6 +35,7 @@ export const store = configureStore({
     [usersApi.reducerPath]: usersApi.reducer,
     [bondsApi.reducerPath]: bondsApi.reducer,
     [fundsApi.reducerPath]: fundsApi.reducer,
+    [adminApi.reducerPath]: adminApi.reducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({
@@ -45,7 +47,8 @@ export const store = configureStore({
       .concat(portfoliosApi.middleware)
       .concat(usersApi.middleware)
       .concat(bondsApi.middleware)
-      .concat(fundsApi.middleware),
+      .concat(fundsApi.middleware)
+      .concat(adminApi.middleware),
 });
 
 // Enable refetchOnFocus and refetchOnReconnect

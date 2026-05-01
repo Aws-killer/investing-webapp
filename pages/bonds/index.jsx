@@ -18,6 +18,19 @@ const fmtYear = (d) => {
   catch { return null; }
 };
 
+const timeLeftLabel = (bond) => {
+  if (bond.time_to_maturity_label) return bond.time_to_maturity_label;
+  if (!bond.maturity_date) return "—";
+  const days = Math.ceil((new Date(bond.maturity_date) - new Date()) / 86400000);
+  if (days < 0) return "Matured";
+  const years = Math.floor(days / 365);
+  const months = Math.floor((days % 365) / 30);
+  const remDays = (days % 365) % 30;
+  if (years > 0) return `${years}y ${months}m left`;
+  if (months > 0) return `${months}m ${remDays}d left`;
+  return `${remDays}d left`;
+};
+
 // Approximate yield-to-maturity using simplified formula
 const calcYTM = (couponRate, pricePer100, dtm) => {
   if (!couponRate || !pricePer100 || !dtm || dtm <= 0) return null;
@@ -33,7 +46,7 @@ const calcYTM = (couponRate, pricePer100, dtm) => {
 const normTenor = (s) => {
   if (!s) return "Other";
   const m = String(s).match(/(\d+)/);
-  return m ? `${m[1]}Y` : String(s);
+  return m ? `${parseInt(m[1], 10)}Y` : String(s);
 };
 
 const TENOR_ORDER = ["2Y", "3Y", "5Y", "7Y", "10Y", "15Y", "20Y", "25Y", "30Y"];
@@ -95,6 +108,7 @@ function YieldSummary({ bonds }) {
               <p className="text-[10px] text-muted-foreground mt-2">
                 Coupon {b.coupon_rate?.toFixed(3)}% · Price {b.price_per_100?.toFixed(2)}
               </p>
+              <p className="text-[10px] text-muted-foreground mt-1">{timeLeftLabel(b)}</p>
             </div>
           );
         })}
@@ -191,6 +205,7 @@ const COL_DEFS = [
   { key: "price_per_100", label: "Price / 100", align: "right" },
   { key: "ytm", label: "YTM", align: "right" },
   { key: "dtm", label: "DTM", align: "right" },
+  { key: "days_to_maturity", label: "Time Left", align: "right" },
   { key: "maturity_date", label: "Matures", align: "right" },
 ];
 
@@ -307,6 +322,9 @@ function BondTable({ bonds }) {
                       {ytm != null ? `${ytm.toFixed(3)}%` : "—"}
                     </td>
                     <td className="px-3 py-2.5 text-right text-muted-foreground">{b.dtm?.toLocaleString()}</td>
+                    <td className={cn("px-3 py-2.5 text-right font-medium", b.is_matured ? "text-red-400" : "text-muted-foreground")}>
+                      {timeLeftLabel(b)}
+                    </td>
                     <td className="px-3 py-2.5 text-right text-muted-foreground">{fmtDate(b.maturity_date)}</td>
                   </tr>
                 );

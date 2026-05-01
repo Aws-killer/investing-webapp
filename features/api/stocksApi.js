@@ -5,7 +5,14 @@ import { baseQuery } from "./baseApi";
 export const stocksApi = createApi({
   reducerPath: "stocksApi",
   baseQuery,
-  tagTypes: ["StockList", "StockPrice", "StockMetrics", "StockDividends"],
+  tagTypes: [
+    "StockList",
+    "StockPrice",
+    "StockMetrics",
+    "StockDividends",
+    "MarketHighlights",
+    "CorporateActions",
+  ],
   endpoints: (builder) => ({
     importStock: builder.mutation({
       query: (symbol) => ({
@@ -75,6 +82,40 @@ export const stocksApi = createApi({
         return null;
       },
     }),
+    getMarketHighlights: builder.query({
+      query: ({ limit = 5 } = {}) => ({
+        url: "/stocks/market/highlights",
+        params: { limit },
+      }),
+      providesTags: ["MarketHighlights"],
+      transformResponse: (response) => {
+        if (response.success && response.data) {
+          return response.data;
+        }
+        return {
+          trading_date: null,
+          updated_at: null,
+          overview: {},
+          top_gainers: [],
+          top_losers: [],
+          most_active: [],
+          corporate_actions: [],
+        };
+      },
+    }),
+    getCorporateActions: builder.query({
+      query: ({ symbol, limit = 20 } = {}) => ({
+        url: "/stocks/corporate-actions",
+        params: { symbol, limit },
+      }),
+      providesTags: ["CorporateActions"],
+      transformResponse: (response) => {
+        if (response.success && response.data?.actions) {
+          return response.data.actions;
+        }
+        return [];
+      },
+    }),
   }),
 });
 
@@ -85,4 +126,6 @@ export const {
   useGetStockMetricsQuery,
   useGetStockDividendsQuery,
   useGetStockPriceByDateQuery,
+  useGetMarketHighlightsQuery,
+  useGetCorporateActionsQuery,
 } = stocksApi;

@@ -1,9 +1,10 @@
 "use client";
-import React, { memo } from "react";
+import React from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { UwekezajiLogo } from "@/components/layout/UwekezajiLogo";
 import { motion } from "framer-motion";
-import { ArrowRight, BarChart2, Shield, Smartphone, ChevronRight, TrendingUp, Zap, Globe } from "lucide-react";
+import { ArrowRight, BarChart2, Shield, ChevronRight, TrendingUp, Zap, Globe } from "lucide-react";
 
 const cn = (...c) => c.filter(Boolean).join(" ");
 
@@ -24,11 +25,15 @@ const Card = ({ className, children, hover = true }) => (
 );
 
 /* ─── Feature card ───────────────────────────────────────────────────────── */
-const FeatureCard = ({ icon, tag, title, description }) => (
+const FeatureCard = ({ imageSrc, tag, title, description }) => (
   <Card>
-    <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-[6px] bg-[#F3F3F3] mb-5">
-      {icon}
-      <span className="text-[9px] font-bold uppercase tracking-[0.15em] text-[#555555]">{tag}</span>
+    <div className="mb-5 flex items-start justify-between gap-4">
+      <div className="inline-flex items-center gap-2 rounded-[6px] bg-[#F3F3F3] px-2.5 py-1">
+        <span className="text-[9px] font-bold uppercase tracking-[0.15em] text-[#555555]">{tag}</span>
+      </div>
+      <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-[16px] bg-[#F4F4F1]">
+        <Image src={imageSrc} alt={title} fill className="object-cover" />
+      </div>
     </div>
     <h3 className="text-[18px] font-extrabold tracking-[-0.04em] text-black leading-snug mb-2">{title}</h3>
     <p className="text-[13px] text-[#555555] font-medium leading-relaxed">{description}</p>
@@ -87,13 +92,13 @@ export default function LandingPage() {
             <SectionLabel>Investing, engineered</SectionLabel>
 
             <h1 className="text-[52px] sm:text-[64px] lg:text-[80px] font-extrabold tracking-[-0.05em] text-black leading-[0.95] mb-6">
-              Master your wealth.<br />
-              <span className="text-[#555555]">Elevate your future.</span>
+              Build conviction.<br />
+              <span className="text-[#555555]">Move with clarity.</span>
             </h1>
 
             <p className="text-[16px] text-[#555555] font-medium leading-relaxed max-w-xl mb-8">
-              The sophisticated command center for the modern investor. Track, analyze, and optimize
-              your global portfolio with precision.
+              A calm, high-performance investing platform for East African markets. Track stocks,
+              funds, bonds, and portfolio moves in one deliberate command center.
             </p>
 
             <div className="flex flex-wrap gap-3">
@@ -119,20 +124,88 @@ export default function LandingPage() {
             transition={{ duration: 0.8, delay: 0.2 }}
             className="mt-16"
           >
-            <div className="bg-white rounded-[16px] shadow-[0_24px_80px_rgba(0,0,0,0.08)] overflow-hidden border border-[rgba(27,27,27,0.06)]">
-              {/* Fake browser chrome */}
-              <div className="flex items-center gap-2 px-4 py-3 border-b border-[rgba(27,27,27,0.06)] bg-[#F9F9F9]">
-                {["bg-red-400", "bg-yellow-400", "bg-green-400"].map((c, i) => (
-                  <div key={i} className={`w-2.5 h-2.5 rounded-full ${c}`} />
-                ))}
-                <div className="mx-auto h-5 w-48 bg-[#F3F3F3] rounded-[4px]" />
-              </div>
-              {/* Mock content */}
-              <div className="p-6 grid grid-cols-3 gap-4">
-                <div className="col-span-2 h-48 bg-[#F9F9F9] rounded-[8px]" />
-                <div className="col-span-1 h-48 bg-[#F9F9F9] rounded-[8px]" />
-                <div className="col-span-1 h-28 bg-[#F9F9F9] rounded-[8px]" />
-                <div className="col-span-2 h-28 bg-[#F9F9F9] rounded-[8px]" />
+            <div className="overflow-hidden rounded-[28px] border border-[rgba(27,27,27,0.06)] bg-white shadow-[0_24px_80px_rgba(0,0,0,0.08)]">
+              <div className="grid items-stretch lg:grid-cols-[1.1fr_1fr]">
+                <div className="border-b border-[rgba(27,27,27,0.06)] p-6 lg:border-b-0 lg:border-r">
+                  <div className="mb-6 flex items-center justify-between">
+                    <div>
+                      <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#999999]">Live workspace</p>
+                      <p className="mt-2 text-[28px] font-extrabold tracking-[-0.05em] text-black">Uwekezaji Command Center</p>
+                    </div>
+                    <div className="rounded-full bg-[#111111] px-3 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-white">
+                      Real markets
+                    </div>
+                  </div>
+
+                  <div className="grid gap-4 sm:grid-cols-3">
+                    <div className="rounded-[18px] bg-[#111111] p-4 text-white">
+                      <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-white/55">Watchlist</p>
+                      <p className="mt-6 text-[32px] font-extrabold tracking-[-0.05em]">24</p>
+                      <p className="mt-2 text-[11px] font-medium text-white/65">Assets moving now</p>
+                    </div>
+                    <div className="rounded-[18px] bg-[#F4F4F1] p-4">
+                      <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-[#8A8A81]">Income</p>
+                      <p className="mt-6 text-[32px] font-extrabold tracking-[-0.05em] text-black">12.4%</p>
+                      <p className="mt-2 text-[11px] font-medium text-[#66665F]">Projected yield mix</p>
+                    </div>
+                    <div className="rounded-[18px] bg-[#DDF7EE] p-4">
+                      <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-[#3A6D5C]">Alerts</p>
+                      <p className="mt-6 text-[32px] font-extrabold tracking-[-0.05em] text-black">08</p>
+                      <p className="mt-2 text-[11px] font-medium text-[#4B7164]">New actions and signals</p>
+                    </div>
+                  </div>
+
+                  <div className="mt-5 rounded-[24px] bg-[#F7F7F4] p-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-[#999999]">Portfolio pulse</p>
+                        <p className="mt-1 text-[20px] font-extrabold tracking-[-0.04em] text-black">Multi-asset positioning</p>
+                      </div>
+                      <div className="rounded-full bg-white px-3 py-1 text-[10px] font-bold uppercase tracking-[0.15em] text-[#0054CB] shadow-[0_8px_24px_rgba(0,0,0,0.05)]">
+                        Synced
+                      </div>
+                    </div>
+                    <div className="relative mt-4 overflow-hidden rounded-[20px]">
+                      <Image
+                        src="/landing/hero-command-center.svg"
+                        alt="Uwekezaji landing page command center illustration"
+                        width={1200}
+                        height={820}
+                        className="h-auto w-full"
+                        priority
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-[#111111] p-6 text-white">
+                  <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-white/45">Why it feels premium</p>
+                  <div className="mt-4 space-y-4">
+                    {[
+                      ["One screen, full market context", "Stocks, ETFs, bond auctions, yields, and corporate actions live together."],
+                      ["Fast decisions, calm interface", "Quiet surfaces, strong hierarchy, and no dashboard clutter."],
+                      ["Built for regional reality", "Designed around Tanzanian and East African investment workflows."]
+                    ].map(([title, body]) => (
+                      <div key={title} className="rounded-[22px] border border-white/10 bg-white/5 p-4">
+                        <p className="text-[15px] font-extrabold tracking-[-0.03em] text-white">{title}</p>
+                        <p className="mt-2 text-[12px] font-medium leading-relaxed text-white/62">{body}</p>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="mt-6 rounded-[24px] bg-white p-4 text-black">
+                    <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-[#999999]">Built for motion</p>
+                    <div className="mt-3 grid grid-cols-2 gap-3">
+                      <div className="rounded-[18px] bg-[#F4F4F1] p-4">
+                        <p className="text-[28px] font-extrabold tracking-[-0.05em]">3x</p>
+                        <p className="text-[11px] font-medium text-[#66665F]">Faster asset scanning</p>
+                      </div>
+                      <div className="rounded-[18px] bg-[#111111] p-4 text-white">
+                        <p className="text-[28px] font-extrabold tracking-[-0.05em]">24/7</p>
+                        <p className="text-[11px] font-medium text-white/65">Portfolio visibility</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </motion.div>
@@ -176,22 +249,22 @@ export default function LandingPage() {
           </h2>
           <div className="grid md:grid-cols-3 gap-4">
             <FeatureCard
-              icon={<Smartphone size={13} className="text-[#555555]" />}
+              imageSrc="/landing/icon-import.svg"
               tag="Easy Import"
               title="Complete financial picture"
-              description="Connect all your accounts via secure API integration with thousands of providers."
+              description="Bring your market data, portfolio positions, and watchlists into a single clean operating view."
             />
             <FeatureCard
-              icon={<BarChart2 size={13} className="text-[#555555]" />}
+              imageSrc="/landing/icon-analytics.svg"
               tag="Advanced Analytics"
               title="Deep portfolio insights"
-              description="Asset allocation, historical performance, and AI-powered risk ratings in one view."
+              description="See trend shifts, bond yield patterns, and allocation changes without digging through noisy tables."
             />
             <FeatureCard
-              icon={<Shield size={13} className="text-[#555555]" />}
+              imageSrc="/landing/icon-security.svg"
               tag="Bank-Grade Security"
               title="Your data, protected"
-              description="256-bit encryption means no one can access your financial data — not even us."
+              description="High-trust design and disciplined access patterns make sensitive portfolio data feel safe and controlled."
             />
           </div>
         </div>

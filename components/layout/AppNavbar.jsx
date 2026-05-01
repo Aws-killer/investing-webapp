@@ -2,10 +2,10 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import { AnimatePresence, motion } from "framer-motion";
-import { Menu, X, ChevronRight, Bell, Star, Moon, Sun, Search } from "lucide-react";
+import { Menu, X, ChevronRight, Bell, Star, Moon, Sun, Search, LogOut } from "lucide-react";
 import { useTheme } from "next-themes";
-import { useSelector } from "react-redux";
-import { selectIsAuthenticated } from "@/features/slices/authSlice";
+import { useDispatch, useSelector } from "react-redux";
+import { logout, selectIsAuthenticated } from "@/features/slices/authSlice";
 import { useCurrentUserId } from "@/hooks/auth/use-current-user";
 import { useIsMobile } from "@/hooks/ui/use-mobile";
 import { navItems } from "./NavItems";
@@ -168,8 +168,15 @@ const Navbar = () => {
   const [menuOpen, setMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const router = useRouter();
+  const dispatch = useDispatch();
 
   const visibleNavItems = navItems.filter((item) => !item.requiresAuth || isAuthenticated);
+
+  const handleLogout = () => {
+    dispatch(logout());
+    setMenuOpen(false);
+    router.push("/login");
+  };
 
   useEffect(() => {
     if (!isMobile) return;
@@ -245,6 +252,16 @@ const Navbar = () => {
               </button>
             </div>
           )}
+          {isAuthenticated && (
+            <button
+              onClick={handleLogout}
+              className="hidden sm:flex h-9 w-9 items-center justify-center rounded-[6px] hover:bg-muted active:scale-95 transition"
+              aria-label="Log out"
+              title="Log out"
+            >
+              <LogOut size={17} className="text-muted-foreground" />
+            </button>
+          )}
         </div>
       </nav>
 
@@ -290,6 +307,14 @@ const Navbar = () => {
           <button className="w-full h-11 flex items-center gap-3 px-3 rounded-[6px] hover:bg-muted text-[13px] font-semibold text-foreground transition">
             <Bell size={16} className="text-muted-foreground" /> Alerts
           </button>
+          {isAuthenticated && (
+            <button
+              onClick={handleLogout}
+              className="w-full h-11 flex items-center gap-3 px-3 rounded-[6px] hover:bg-muted text-[13px] font-semibold text-foreground transition"
+            >
+              <LogOut size={16} className="text-muted-foreground" /> Log out
+            </button>
+          )}
 
           <div className="my-2 h-px bg-border mx-1" />
 
